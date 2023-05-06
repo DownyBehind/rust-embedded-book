@@ -1,6 +1,6 @@
-# The Embedded Rust Book
+# 임베디드 러스트 북
 
-> Documentation on how to use the Rust Programming Language to develop firmware for bare metal (microcontroller) devices
+> Rust 프로그래밍 언어를 사용하여 bare metal(microcontroller) 장치용 펌웨어를 개발하는 방법에 대한 문서
 
 This project is developed and maintained by the [Resources team][team].
 
@@ -16,14 +16,14 @@ This book is located at https://docs.rust-embedded.org/book/
 
 The Embedded Rust Book (this project) is distributed under the following licenses:
 
-* The code samples and free-standing Cargo projects contained within this book are licensed under the terms of both the [MIT License] and the [Apache License v2.0].
-* The written prose contained within this book is licensed under the terms of the Creative Commons [CC-BY-SA v4.0] license.
+- The code samples and free-standing Cargo projects contained within this book are licensed under the terms of both the [MIT License] and the [Apache License v2.0].
+- The written prose contained within this book is licensed under the terms of the Creative Commons [CC-BY-SA v4.0] license.
 
 Copies of the licenses used by this project may also be found here:
 
-* [MIT License Hosted]
-* [Apache License v2.0 Hosted]
-* [CC-BY-SA v4.0 Hosted]
+- [MIT License Hosted]
+- [Apache License v2.0 Hosted]
+- [CC-BY-SA v4.0 Hosted]
 
 [MIT License]: ./LICENSE-MIT
 [Apache License v2.0]: ./LICENSE-APACHE
