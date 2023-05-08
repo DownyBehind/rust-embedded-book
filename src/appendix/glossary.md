@@ -6,7 +6,8 @@
 
 ### BSP
 
-Board Support Crate 는 특정 보드용으로 구성된 인터페이스를 제공합니다. 이것은 보통 [HAL](#hal) Crate에 의존적입니다.
+Board Support Crate 는 특정 보드용으로 구성된 인터페이스를 제공합니다.
+이것은 보통 [HAL](#hal) Crate에 의존적입니다.
 이에 대한 좀 더 자세한 내용은 여기를 참고하세요. [memory-mapped registers page](../start/registers.md)
 또는 좀 더 넓은 시각을 위해서 여기를 참고하세요. [this video](https://youtu.be/vLYit_HHPaY).
 
