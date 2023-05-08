@@ -38,8 +38,8 @@
 
 ## 행동강령
 
-이 저작물에 대한 기여는 [Rust Code of Conduct][CoC]의 조건에 따라 구성됩니다,
-이 저작물의 유지보수인 [Resources team][team]은 이 행동강령을 지키기 위해 개입을 약속합니다.
+이 crate에 대한 기여는 [Rust Code of Conduct][CoC]의 조건에 따라 구성됩니다,
+이 crate의 유지보수인 [Resources team][team]은 이 행동강령을 지키기 위해 개입을 약속합니다.
 
 [CoC]: CODE_OF_CONDUCT.md
 [team]: https://github.com/rust-embedded/wg#the-resources-team

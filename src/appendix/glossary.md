@@ -1,64 +1,62 @@
-# Appendix A: Glossary
+# Appendix A: 용어집
 
-The embedded ecosystem is full of different protocols, hardware components and
-vendor-specific things that use their own terms and abbreviations. This Glossary
-attempts to list them with pointers for understanding them better.
+임베디드 에코시스템은 다양한 프로토콜, 하드웨어 구성요소 및 공급업체별로 고유한 용어와 약어를 사용하는 것으로 가득합니다.
+이 용어집은 이러한 용어를 더 잘 이해하기 위한 링크와 함께 나열합니다.
+.
 
 ### BSP
 
-A Board Support Crate provides a high level interface configured for a specific
-board. It usually depends on a [HAL](#hal) crate.
-There is a more detailed description on the [memory-mapped registers page](../start/registers.md)
-or for a broader overview see [this video](https://youtu.be/vLYit_HHPaY).
+Board Support Crate 는 특정 보드용으로 구성된 인터페이스를 제공합니다. 이것은 보통 [HAL](#hal) Crate에 의존적입니다.
+이에 대한 좀 더 자세한 내용은 여기를 참고하세요. [memory-mapped registers page](../start/registers.md)
+또는 좀 더 넓은 시각을 위해서 여기를 참고하세요. [this video](https://youtu.be/vLYit_HHPaY).
 
 ### FPU
 
-Floating-point Unit. A 'math processor' running only operations on floating-point numbers.
+Floating-point Unit. 부동 소수점 숫자에 대해서만 연산을 실행하는 '수학 프로세서'입니다.
 
 ### HAL
 
-A Hardware Abstraction Layer crate provides a developer friendly interface to a microcontroller's
-features and peripherals. It is usually implemented on top of a [Peripheral Access Crate (PAC)](#pac).
-It may also implement traits from the [`embedded-hal`](https://crates.io/crates/embedded-hal) crate.
-There is a more detailed description on the [memory-mapped registers page](../start/registers.md)
-or for a broader overview see [this video](https://youtu.be/vLYit_HHPaY).
+Hardware Abstraction Layer crate 마이크로컨트롤러의 기능 및 주변 장치에 대한 개발자 친화적인 인터페이스를 제공합니다.
+이것은 보통 [Peripheral Access Crate (PAC)](#pac)의 상위에 구현됩니다.
+이것은 또한 [`embedded-hal`](https://crates.io/crates/embedded-hal) crate의 특성을 구현할 수도 있습니다.
+이에 대한 좀 더 자세한 내용은 여기를 참고하세요. [memory-mapped registers page](../start/registers.md)
+또는 좀 더 넓은 시각을 위해서 여기를 참고하세요. [this video](https://youtu.be/vLYit_HHPaY).
 
 ### I2C
 
-Sometimes referred to as `I²C` or Inter-IC. It is a protocol meant for hardware communication
-within a single integrated circuit. See [here][i2c] for more details
+때때로 `I²C` 또는 Inter-IC로 언급됩니다. 이것은 단일 직접 회로 내에의 하드웨어 통신을 위한 프로토콜입니다.
+이에 대한 좀 더 자세한 내용은 여기를 참고하세요. [here][i2c]
 
 [i2c]: https://en.wikipedia.org/wiki/I2c
 
 ### PAC
 
-A Peripheral Access Crate provides access to a microcontroller's peripherals. It is one of
-the lower level crates and is usually generated directly from the provided [SVD](#svd), often
-using [svd2rust](https://github.com/rust-embedded/svd2rust/). The [Hardware Abstraction Layer](#hal)
-would usually depend on this crate.
-There is a more detailed description on the [memory-mapped registers page](../start/registers.md)
-or for a broader overview see [this video](https://youtu.be/vLYit_HHPaY).
+Peripheral Access Crate는 마이크로프로세스의 주변장치에 대한 접근을 제공합니다. 이것은 로우 레벨 crate 중 하나이며 제공되는 [SVD](#svd)에서 직접적으로 만들어냅니다, 이것을 주로 사용합니다. [svd2rust](https://github.com/rust-embedded/svd2rust/).
+
+[Hardware Abstraction Layer](#hal)는 보통 이 crate에 의존적입니다.
+이에 대한 좀 더 자세한 내용은 여기를 참고하세요. [memory-mapped registers page](../start/registers.md)
+또는 좀 더 넓은 시각을 위해서 여기를 참고하세요. [this video](https://youtu.be/vLYit_HHPaY).
 
 ### SPI
 
-Serial Peripheral Interface. See [here][spi] for more information.
+Serial Peripheral Interface. 이에 대한 좀 더 자세한 내용은 여기를 참고하세요. [here][spi]
 
 [spi]: https://en.wikipedia.org/wiki/Serial_peripheral_interface
 
 ### SVD
 
-System View Description is an XML file format used to describe the programmers view of a
-microcontroller device. You can read more about it on
+System View Description, 마이크로프로세서에 대한 프로그래머의 입장에서 작성한 XML 형식의 파일.
+이에 대한 좀 더 자세한 내용은 여기를 참고하세요.
 [the ARM CMSIS documentation site](https://www.keil.com/pack/doc/CMSIS/SVD/html/index.html).
 
 ### UART
 
-Universal asynchronous receiver-transmitter. See [here][uart] for more information.
+Universal asynchronous receiver-transmitter. 이에 대한 좀 더 자세한 내용은 여기를 참고하세요. [here][uart]
 
 [uart]: https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter
 
 ### USART
 
-Universal synchronous and asynchronous receiver-transmitter. See [here][usart] for more information.
+Universal synchronous and asynchronous receiver-transmitter. 이에 대한 좀 더 자세한 내용은 여기를 참고하세요. [here][usart]
 
 [usart]: https://en.wikipedia.org/wiki/Universal_synchronous_and_asynchronous_receiver-transmitter
