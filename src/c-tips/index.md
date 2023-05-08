@@ -1,37 +1,25 @@
-# Tips for embedded C developers
+# 임베디드 C 개발자들을 위한 팁
 
-This chapter collects a variety of tips that might be useful to experienced
-embedded C developers looking to start writing Rust. It will especially
-highlight how things you might already be used to in C are different in Rust.
+이 장은 Rust 쓰기를 시작하려는 경험이 있는 임베디드 C 개발자에게 유용할 수 있는 다양한 팁들을 모아놓은 것입니다. 특히, C에서 이미 익숙한 것들이 Rust에서는 어떻게 다른지에 대해 강조할 것입니다.
 
 ## Preprocessor
 
-In embedded C it is very common to use the preprocessor for a variety of
-purposes, such as:
+임베디드 C에서는 다양한 목적으로 전처리기를 사용하는 것이 매우 일반적입니다. 예를 들어,:
 
-* Compile-time selection of code blocks with `#ifdef`
-* Compile-time array sizes and computations
-* Macros to simplify common patterns (to avoid function call overhead)
+- 컴파일 시간에 다음의 코드 블록을 선택하는 경우 `#ifdef`
+- 컴파일 시간에 배열 크기와 연산을 처리하는 경우
+- 일반적인 패턴을 단순화하기 위해 매크로를 사용하는 경우 (함수 호출 오버헤드를 피하기 위해)
 
-In Rust there is no preprocessor, and so many of these use cases are addressed
-differently. In the rest of this section we cover various alternatives to
-using the preprocessor.
+Rust에서는 전처리기가 없기 때문에, 이러한 사용 사례들이 다르게 처리됩니다.  
+이 섹션의 나머지 부분에서는 전처리기 대신 사용하는 다양한 대안에 대해 다룹니다.
 
-### Compile-Time Code Selection
+### 컴파일 중 코드 블록 선택
 
-The closest match to `#ifdef ... #endif` in Rust are [Cargo features]. These
-are a little more formal than the C preprocessor: all possible features are
-explicitly listed per crate, and can only be either on or off. Features are
-turned on when you list a crate as a dependency, and are additive: if any crate
-in your dependency tree enables a feature for another crate, that feature will
-be enabled for all users of that crate.
+Rust에서 `#ifdef ... #endif` 와 가장 유사한 것은 [Cargo features]입니다. 이들은 C 전처리기보다 조금 더 형식적인 특징을 가지고 있습니다. 모든 가능한 특징은 명시적으로 crate 단위로 나열되며, 켜거나 끌 수 있습니다. 특징은 종속성으로 crate를 나열할 때 켜지며, 누구든지 특정 crate의 특징을 활성화하면 해당 특징은 해당 crate를 사용하는 모든 사용자에게 활성화됩니다.
 
 [Cargo features]: https://doc.rust-lang.org/cargo/reference/manifest.html#the-features-section
 
-For example, you might have a crate which provides a library of signal
-processing primitives. Each one might take some extra time to compile or
-declare some large table of constants which you'd like to avoid. You could
-declare a Cargo feature for each component in your `Cargo.toml`:
+예를 들어, 신호 처리 기본 요소 라이브러리를 제공하는 crate가 있다고 가정해보겠습니다. 각 기본 요소는 컴파일에 추가 시간이 소요되거나 대량의 상수 테이블을 선언할 수 있습니다. 이를 피하고자 각 구성 요소에 대한 Cargo 특징을 Cargo.toml에 선언할 수 있습니다.:
 
 ```toml
 [features]
@@ -39,7 +27,7 @@ FIR = []
 IIR = []
 ```
 
-Then, in your code, use `#[cfg(feature="FIR")]` to control what is included.
+그리고 코드에서 `#[cfg(feature="FIR")]` 를 사용하여 무엇을 포함할 지 제어할 수 있습니다.
 
 ```rust
 /// In your top-level lib.rs
@@ -63,7 +51,7 @@ full details of the conditional compilation support, refer to the
 
 The conditional compilation will only apply to the next statement or block. If
 a block can not be used in the current scope then the `cfg` attribute will
-need to be used multiple times.  It's worth noting that most of the time it is
+need to be used multiple times. It's worth noting that most of the time it is
 better to simply include all the code and allow the compiler to remove dead
 code when optimising: it's simpler for you and your users, and in general the
 compiler will do a good job of removing unused code.
@@ -137,12 +125,12 @@ Cargo build system as required.
 
 Common use cases for build scripts include:
 
-* provide build-time information, for example statically embedding the build
+- provide build-time information, for example statically embedding the build
   date or Git commit hash into your executable
-* generate linker scripts at build time depending on selected features or other
+- generate linker scripts at build time depending on selected features or other
   logic
-* change the Cargo build configuration
-* add extra static libraries to link against
+- change the Cargo build configuration
+- add extra static libraries to link against
 
 At present there is no support for post-build scripts, which you might
 traditionally have used for tasks like automatic generation of binaries from
@@ -283,11 +271,12 @@ fn driver() {
 ```
 
 A few things are worth noting in the code sample:
-  * We can pass `&mut SIGNALLED` into the function requiring `*mut T`, since
-    `&mut T` automatically converts to a `*mut T` (and the same for `*const T`)
-  * We need `unsafe` blocks for the `read_volatile`/`write_volatile` methods,
-    since they are `unsafe` functions. It is the programmer's responsibility
-    to ensure safe use: see the methods' documentation for further details.
+
+- We can pass `&mut SIGNALLED` into the function requiring `*mut T`, since
+  `&mut T` automatically converts to a `*mut T` (and the same for `*const T`)
+- We need `unsafe` blocks for the `read_volatile`/`write_volatile` methods,
+  since they are `unsafe` functions. It is the programmer's responsibility
+  to ensure safe use: see the methods' documentation for further details.
 
 It is rare to require these functions directly in your code, as they will
 usually be taken care of for you by higher-level libraries. For memory mapped
@@ -409,9 +398,9 @@ Rust Reference.
 
 ## Other Resources
 
-* In this book:
-    * [A little C with your Rust](../interoperability/c-with-rust.md)
-    * [A little Rust with your C](../interoperability/rust-with-c.md)
-* [The Rust Embedded FAQs](https://docs.rust-embedded.org/faq.html)
-* [Rust Pointers for C Programmers](http://blahg.josefsipek.net/?p=580)
-* [I used to use pointers - now what?](https://github.com/diwic/reffers-rs/blob/master/docs/Pointers.md)
+- In this book:
+  - [A little C with your Rust](../interoperability/c-with-rust.md)
+  - [A little Rust with your C](../interoperability/rust-with-c.md)
+- [The Rust Embedded FAQs](https://docs.rust-embedded.org/faq.html)
+- [Rust Pointers for C Programmers](http://blahg.josefsipek.net/?p=580)
+- [I used to use pointers - now what?](https://github.com/diwic/reffers-rs/blob/master/docs/Pointers.md)
