@@ -1,22 +1,21 @@
-# Verify Installation
+# 설치 확인
 
-In this section we check that some of the required tools / drivers have been
-correctly installed and configured.
+이 섹션에서는 필수 도구/드라이버가 올바르게 설치되고 설정되었는지 확인합니다.
 
-Connect your laptop / PC to the discovery board using a Mini-USB USB cable. The
-discovery board has two USB connectors; use the one labeled "USB ST-LINK" that
-sits on the center of the edge of the board.
+Mini-USB 케이블로 노트북/PC를 discovery 보드에 연결합니다.
+discovery 보드에는 USB 커넥터가 두 개 있는데,
+보드 가장자리 중앙의 "USB ST-LINK" 라벨이 붙은 포트를 사용하세요.
 
-Also check that the ST-LINK header is populated. See the picture below; the
-ST-LINK header is highlighted.
+ST-LINK 헤더가 연결되어 있는지도 확인하세요.
+아래 그림에서 ST-LINK 헤더가 강조되어 있습니다.
 
 <p align="center">
 <img title="Connected discovery board" src="../../assets/verify.jpeg">
 </p>
 
-Now run the following command:
+이제 다음 명령을 실행합니다.
 
-``` console
+```console
 openocd -f interface/stlink.cfg -f target/stm32f3x.cfg
 ```
 
@@ -24,9 +23,9 @@ openocd -f interface/stlink.cfg -f target/stm32f3x.cfg
 > not contain the new (and preferable) `interface/stlink.cfg` file; instead you
 > may need to use `interface/stlink-v2.cfg` or `interface/stlink-v2-1.cfg`.
 
-You should get the following output and the program should block the console:
+아래와 비슷한 출력이 나오고, 프로그램은 콘솔을 점유한 채 대기해야 합니다.
 
-``` text
+```text
 Open On-Chip Debugger 0.10.0
 Licensed under GNU GPL v2
 For bug reports, read
@@ -45,34 +44,33 @@ Info : Target voltage: 2.919881
 Info : stm32f3x.cpu: hardware has 6 breakpoints, 4 watchpoints
 ```
 
-The contents may not match exactly but you should get the last line about
-breakpoints and watchpoints. If you got it then terminate the OpenOCD process
-and move to the [next section].
+출력이 완전히 같을 필요는 없지만,
+마지막의 breakpoints/watchpoints 관련 줄은 보여야 합니다.
+확인되면 OpenOCD 프로세스를 종료하고 [다음 섹션]으로 이동하세요.
 
 [next section]: ../../start/index.md
 
-If you didn't get the "breakpoints" line then try one of the following commands.
+"breakpoints" 줄이 보이지 않으면 다음 명령 중 하나를 시도해 보세요.
 
-``` console
+```console
 openocd -f interface/stlink-v2.cfg -f target/stm32f3x.cfg
 ```
 
-``` console
+```console
 openocd -f interface/stlink-v2-1.cfg -f target/stm32f3x.cfg
 ```
 
-If one of those commands works it means you got an old hardware revision of the
-discovery board. That won't be a problem but commit that fact to memory as
-you'll need to configure things a bit differently later on. You can move to the
-[next section].
+위 명령 중 하나가 동작한다면,
+구형 하드웨어 리비전의 discovery 보드를 사용 중이라는 뜻입니다.
+큰 문제는 아니지만 이후 설정을 조금 다르게 해야 하므로 기억해 두세요.
+[다음 섹션]으로 이동하면 됩니다.
 
-If none of the commands work as a normal user then try to run them with root
-permission (e.g. `sudo openocd ..`). If the commands do work with root
-permission then check that the [udev rules] have been correctly set.
+일반 사용자 권한에서 모두 실패한다면 root 권한(예: `sudo openocd ..`)으로 실행해 보세요.
+root에서는 동작한다면 [udev rules] 설정이 올바른지 점검하세요.
 
 [udev rules]: linux.md#udev-rules
 
-If you have reached this point and OpenOCD is not working please open [an issue]
-and we'll help you out!
+여기까지 했는데도 OpenOCD가 동작하지 않으면 [an issue]를 열어 주세요.
+도와드리겠습니다.
 
 [an issue]: https://github.com/rust-embedded/book/issues

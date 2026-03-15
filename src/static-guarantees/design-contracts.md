@@ -1,22 +1,24 @@
-# Design Contracts
+# 설계 계약
 
-In our last chapter, we wrote an interface that *didn't* enforce design contracts. Let's take another look at our imaginary GPIO configuration register:
+앞 장에서는 설계 계약을 _강제하지 않는_ 인터페이스를 작성했습니다.
+가상의 GPIO 설정 레지스터를 다시 보겠습니다.
 
-| Name         | Bit Number(s) | Value | Meaning   | Notes |
-| ---:         | ------------: | ----: | ------:   | ----: |
-| enable       | 0             | 0     | disabled  | Disables the GPIO |
-|              |               | 1     | enabled   | Enables the GPIO |
-| direction    | 1             | 0     | input     | Sets the direction to Input |
-|              |               | 1     | output    | Sets the direction to Output |
-| input_mode   | 2..3          | 00    | hi-z      | Sets the input as high resistance |
-|              |               | 01    | pull-low  | Input pin is pulled low |
-|              |               | 10    | pull-high | Input pin is pulled high |
-|              |               | 11    | n/a       | Invalid state. Do not set |
-| output_mode  | 4             | 0     | set-low   | Output pin is driven low |
-|              |               | 1     | set-high  | Output pin is driven high |
-| input_status | 5             | x     | in-val    | 0 if input is < 1.5v, 1 if input >= 1.5v |
+|         이름 | 비트 번호 |  값 |      의미 |                          설명 |
+| -----------: | --------: | --: | --------: | ----------------------------: |
+|       enable |         0 |   0 |  disabled |                 GPIO 비활성화 |
+|              |           |   1 |   enabled |                   GPIO 활성화 |
+|    direction |         1 |   0 |     input |                입력 방향 설정 |
+|              |           |   1 |    output |                출력 방향 설정 |
+|   input_mode |      2..3 |  00 |      hi-z |        입력을 고저항으로 설정 |
+|              |           |  01 |  pull-low |              입력 핀 pull-low |
+|              |           |  10 | pull-high |             입력 핀 pull-high |
+|              |           |  11 |       n/a | 유효하지 않은 상태. 설정 금지 |
+|  output_mode |         4 |   0 |   set-low |              출력 핀 low 구동 |
+|              |           |   1 |  set-high |             출력 핀 high 구동 |
+| input_status |         5 |   x |    in-val |  입력 < 1.5V면 0, >= 1.5V면 1 |
 
-If we instead checked the state before making use of the underlying hardware, enforcing our design contracts at runtime, we might write code that looks like this instead:
+대신 하드웨어를 사용하기 전에 상태를 검사해서,
+런타임에 설계 계약을 강제한다면 다음과 같은 코드를 작성할 수 있습니다.
 
 ```rust,ignore
 /// GPIO interface
@@ -97,11 +99,14 @@ impl GpioConfig {
 }
 ```
 
-Because we need to enforce the restrictions on the hardware, we end up doing a lot of runtime checking which wastes time and resources, and this code will be much less pleasant for the developer to use.
+하드웨어 제약을 강제하려다 보니 런타임 검사가 많아지고,
+시간과 자원이 낭비됩니다.
+개발자 입장에서도 사용성이 떨어지는 코드가 됩니다.
 
-## Type States
+## 타입 상태
 
-But what if instead, we used Rust's type system to enforce the state transition rules? Take this example:
+그렇다면 상태 전이 규칙을 Rust 타입 시스템으로 강제하면 어떨까요?
+다음 예제를 보겠습니다.
 
 ```rust,ignore
 /// GPIO interface
@@ -209,46 +214,53 @@ impl<IN_MODE> GpioConfig<Enabled, Input, IN_MODE> {
 }
 ```
 
-Now let's see what the code using this would look like:
+이 인터페이스를 사용하는 코드는 다음과 같습니다.
 
 ```rust,ignore
 /*
- * Example 1: Unconfigured to High-Z input
+ * 예제 1: 미설정 -> High-Z 입력
  */
 let pin: GpioConfig<Disabled, _, _> = get_gpio();
 
-// Can't do this, pin isn't enabled!
+// 핀이 활성화되지 않아 불가능
 // pin.into_input_pull_down();
 
-// Now turn the pin from unconfigured to a high-z input
+// 미설정 핀을 high-z 입력으로 전환
 let input_pin = pin.into_enabled_input();
 
-// Read from the pin
+// 핀 읽기
 let pin_state = input_pin.bit_is_set();
 
-// Can't do this, input pins don't have this interface!
+// 입력 핀에는 이 인터페이스가 없어 불가능
 // input_pin.set_bit(true);
 
 /*
- * Example 2: High-Z input to Pulled Low input
+ * 예제 2: High-Z 입력 -> Pull Low 입력
  */
 let pulled_low = input_pin.into_input_pull_down();
 let pin_state = pulled_low.bit_is_set();
 
 /*
- * Example 3: Pulled Low input to Output, set high
+ * 예제 3: Pull Low 입력 -> 출력, high 설정
  */
 let output_pin = pulled_low.into_enabled_output();
 output_pin.set_bit(true);
 
-// Can't do this, output pins don't have this interface!
+// 출력 핀에는 이 인터페이스가 없어 불가능
 // output_pin.into_input_pull_down();
 ```
 
-This is definitely a convenient way to store the state of the pin, but why do it this way? Why is this better than storing the state as an `enum` inside of our `GpioConfig` structure?
+핀 상태를 저장하는 데 분명 편리한 방식이지만,
+왜 굳이 이렇게 할까요?
+`GpioConfig` 내부에 `enum`으로 상태를 저장하는 방식보다 왜 더 좋을까요?
 
-## Compile Time Functional Safety
+## 컴파일 타임 기능 안전성
 
-Because we are enforcing our design constraints entirely at compile time, this incurs no runtime cost. It is impossible to set an output mode when you have a pin in an input mode. Instead, you must walk through the states by converting it to an output pin, and then setting the output mode. Because of this, there is no runtime penalty due to checking the current state before executing a function.
+설계 제약을 전부 컴파일 타임에 강제하므로 런타임 비용이 들지 않습니다.
+입력 모드 핀에서 출력 모드를 설정하는 일은 애초에 불가능합니다.
+반드시 상태 전이를 거쳐 출력 핀으로 변환한 뒤 출력 모드를 설정해야 합니다.
+따라서 함수 실행 전에 현재 상태를 검사하느라 생기는 런타임 페널티가 없습니다.
 
-Also, because these states are enforced by the type system, there is no longer room for errors by consumers of this interface. If they try to perform an illegal state transition, the code will not compile!
+또한 상태가 타입 시스템으로 강제되므로,
+이 인터페이스 사용자가 실수할 여지도 크게 줄어듭니다.
+허용되지 않은 상태 전이를 시도하면 코드가 컴파일되지 않습니다.

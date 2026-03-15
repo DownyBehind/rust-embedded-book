@@ -1,13 +1,12 @@
-# Linux
+# 리눅스
 
-Here are the installation commands for a few Linux distributions.
+아래는 몇 가지 리눅스 배포판에서 사용할 설치 명령입니다.
 
-## Packages
+## 패키지
 
-- Ubuntu 18.04 or newer / Debian stretch or newer
+- Ubuntu 18.04 이상 / Debian stretch 이상
 
-> **NOTE** `gdb-multiarch` is the GDB command you'll use to debug your ARM
-> Cortex-M programs
+> **참고** ARM Cortex-M 프로그램 디버깅에는 `gdb-multiarch` 명령을 사용합니다.
 
 <!-- Debian stretch -->
 <!-- GDB 7.12 -->
@@ -19,51 +18,49 @@ Here are the installation commands for a few Linux distributions.
 <!-- OpenOCD 0.10.0 -->
 <!-- QEMU 2.11.1 -->
 
-``` console
+```console
 sudo apt install gdb-multiarch openocd qemu-system-arm
 ```
 
-- Ubuntu 14.04 and 16.04
+- Ubuntu 14.04, 16.04
 
-> **NOTE** `arm-none-eabi-gdb` is the GDB command you'll use to debug your ARM
-> Cortex-M programs
+> **참고** ARM Cortex-M 프로그램 디버깅에는 `arm-none-eabi-gdb` 명령을 사용합니다.
 
 <!-- Ubuntu 14.04 -->
 <!-- GDB 7.6 (!) -->
 <!-- OpenOCD 0.7.0 (?) -->
 <!-- QEMU 2.0.0 (?) -->
 
-``` console
+```console
 sudo apt install gdb-arm-none-eabi openocd qemu-system-arm
 ```
 
-- Fedora 27 or newer
+- Fedora 27 이상
 
 <!-- Fedora 27 -->
 <!-- GDB 7.6 (!) -->
 <!-- OpenOCD 0.10.0 -->
 <!-- QEMU 2.10.2 -->
 
-``` console
+```console
 sudo dnf install gdb openocd qemu-system-arm
 ```
 
 - Arch Linux
 
-> **NOTE** `arm-none-eabi-gdb` is the GDB command you'll use to debug ARM
-> Cortex-M programs
+> **참고** ARM Cortex-M 프로그램 디버깅에는 `arm-none-eabi-gdb` 명령을 사용합니다.
 
-``` console
+```console
 sudo pacman -S arm-none-eabi-gdb qemu-system-arm openocd
 ```
 
-## udev rules
+## udev 규칙
 
-This rule lets you use OpenOCD with the Discovery board without root privilege.
+이 규칙을 적용하면 root 권한 없이도 Discovery 보드에서 OpenOCD를 사용할 수 있습니다.
 
-Create the file `/etc/udev/rules.d/70-st-link.rules` with the contents shown below.
+`/etc/udev/rules.d/70-st-link.rules` 파일을 만들고 아래 내용을 넣으세요.
 
-``` text
+```text
 # STM32F3DISCOVERY rev A/B - ST-LINK/V2
 ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3748", TAG+="uaccess"
 
@@ -71,21 +68,21 @@ ATTRS{idVendor}=="0483", ATTRS{idProduct}=="3748", TAG+="uaccess"
 ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", TAG+="uaccess"
 ```
 
-Then reload all the udev rules with:
+그다음 아래 명령으로 udev 규칙을 다시 로드합니다.
 
-``` console
+```console
 sudo udevadm control --reload-rules
 ```
 
-If you had the board plugged to your laptop, unplug it and then plug it again.
+보드가 이미 연결되어 있었다면 한 번 분리했다가 다시 연결하세요.
 
-You can check the permissions by running this command:
+다음 명령으로 권한을 확인할 수 있습니다.
 
-``` console
+```console
 lsusb
 ```
 
-Which should show something like
+아래와 비슷한 출력이 보여야 합니다.
 
 ```text
 (..)
@@ -93,10 +90,10 @@ Bus 001 Device 018: ID 0483:374b STMicroelectronics ST-LINK/V2.1
 (..)
 ```
 
-Take note of the bus and device numbers. Use those numbers to create a path like
-`/dev/bus/usb/<bus>/<device>`. Then use this path like so:
+bus와 device 번호를 확인하세요.
+이 번호로 `/dev/bus/usb/<bus>/<device>` 경로를 만들고 다음처럼 확인합니다.
 
-``` console
+```console
 ls -l /dev/bus/usb/001/018
 ```
 
@@ -113,10 +110,9 @@ user::rw-
 user:you:rw-
 ```
 
-The `+` appended to permissions indicates the existence of an extended
-permission. The `getfacl` command tells the user `you` can make use of
-this device.
+권한 문자열 뒤의 `+`는 확장 권한이 있다는 뜻입니다.
+`getfacl` 출력에서 사용자 `you`가 이 장치를 사용할 수 있음을 확인할 수 있습니다.
 
-Now, go to the [next section].
+이제 [다음 섹션]으로 이동하세요.
 
 [next section]: verify.md

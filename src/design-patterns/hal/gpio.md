@@ -1,16 +1,18 @@
-# Recommendations for GPIO Interfaces
+# GPIO 인터페이스 권장사항
 
 <a id="c-zst-pin"></a>
+
 ## Pin types are zero-sized by default (C-ZST-PIN)
 
-GPIO Interfaces exposed by the HAL should provide dedicated zero-sized types for
-each pin on every interface or port, resulting in a zero-cost GPIO abstraction
-when all pin assignments are statically known.
+HAL이 노출하는 GPIO 인터페이스는
+각 인터페이스/포트의 모든 핀에 대해 전용 제로 사이즈 타입을 제공해야 합니다.
+모든 핀 할당이 정적으로 알려진 경우,
+이는 제로 코스트 GPIO 추상화로 이어집니다.
 
-Each GPIO Interface or Port should implement a `split` method returning a
-struct with every pin.
+각 GPIO 인터페이스 또는 포트는
+모든 핀이 담긴 구조체를 반환하는 `split` 메서드를 구현해야 합니다.
 
-Example:
+예시:
 
 ```rust
 pub struct PA0;
@@ -37,12 +39,14 @@ pub struct PortAPins {
 ```
 
 <a id="c-erased-pin"></a>
+
 ## Pin types provide methods to erase pin and port (C-ERASED-PIN)
 
-Pins should provide type erasure methods that move their properties from
-compile time to runtime, and allow more flexibility in applications.
+핀 타입은 타입 소거(type erasure) 메서드를 제공해
+속성 정보를 컴파일 타임에서 런타임으로 옮길 수 있어야 하며,
+애플리케이션에서 더 유연하게 사용할 수 있어야 합니다.
 
-Example:
+예시:
 
 ```rust
 /// Port A, pin 0.
@@ -84,34 +88,34 @@ enum Port {
 ```
 
 <a id="c-pin-state"></a>
+
 ## Pin state should be encoded as type parameters (C-PIN-STATE)
 
-Pins may be configured as input or output with different characteristics
-depending on the chip or family. This state should be encoded in the type system
-to prevent use of pins in incorrect states.
+핀은 칩/패밀리에 따라 다른 특성으로 입력 또는 출력 모드로 설정될 수 있습니다.
+이 상태는 타입 시스템에 인코딩되어,
+잘못된 상태의 핀 사용을 방지해야 합니다.
 
-Additional, chip-specific state (eg. drive strength) may also be encoded in this
-way, using additional type parameters.
+추가적인 칩 특화 상태(예: 구동 강도)도
+추가 타입 파라미터를 사용해 같은 방식으로 인코딩할 수 있습니다.
 
-Methods for changing the pin state should be provided as `into_input` and
-`into_output` methods.
+핀 상태 변경 메서드는 `into_input`, `into_output` 형태로 제공해야 합니다.
 
-Additionally, `with_{input,output}_state` methods should be provided that
-temporarily reconfigure a pin in a different state without moving it.
+또한 핀을 이동시키지 않고 일시적으로 다른 상태로 재설정할 수 있는
+`with_{input,output}_state` 메서드를 제공해야 합니다.
 
-The following methods should be provided for every pin type (that is, both
-erased and non-erased pin types should provide the same API):
+다음 메서드는 모든 핀 타입에 제공되어야 합니다.
+(즉 소거된 핀 타입과 비소거 핀 타입이 동일 API를 제공해야 함)
 
-* `pub fn into_input<N: InputState>(self, input: N) -> Pin<N>`
-* `pub fn into_output<N: OutputState>(self, output: N) -> Pin<N>`
-* ```ignore
+- `pub fn into_input<N: InputState>(self, input: N) -> Pin<N>`
+- `pub fn into_output<N: OutputState>(self, output: N) -> Pin<N>`
+- ```ignore
   pub fn with_input_state<N: InputState, R>(
       &mut self,
       input: N,
       f: impl FnOnce(&mut PA1<N>) -> R,
   ) -> R
   ```
-* ```ignore
+- ```ignore
   pub fn with_output_state<N: OutputState, R>(
       &mut self,
       output: N,
@@ -119,12 +123,11 @@ erased and non-erased pin types should provide the same API):
   ) -> R
   ```
 
+핀 상태는 sealed trait로 제한되어야 합니다.
+HAL 사용자에게는 자체 상태를 추가할 필요가 없어야 합니다.
+이 trait는 핀 상태 API 구현에 필요한 HAL 특화 메서드를 제공할 수 있습니다.
 
-Pin state should be bounded by sealed traits. Users of the HAL should have no
-need to add their own state. The traits can provide HAL-specific methods
-required to implement the pin state API.
-
-Example:
+예시:
 
 ```rust
 # use std::marker::PhantomData;
@@ -201,5 +204,5 @@ impl<S: PinState> PA1<S> {
     }
 }
 
-// Same for `PA` and `Pin`, and other pin types.
+// `PA`, `Pin`, 기타 핀 타입도 동일 패턴을 따른다.
 ```

@@ -1,13 +1,13 @@
 # macOS
 
-All the tools can be installed using [Homebrew] or [MacPorts]:
+필요한 도구는 [Homebrew] 또는 [MacPorts]로 설치할 수 있습니다.
 
 [Homebrew]: http://brew.sh/
 [MacPorts]: https://www.macports.org/
 
-## Install tools with [Homebrew]
+## [Homebrew]로 도구 설치
 
-``` text
+```text
 $ # GDB
 $ brew install arm-none-eabi-gdb
 
@@ -18,14 +18,15 @@ $ # QEMU
 $ brew install qemu
 ```
 
-> **NOTE** If OpenOCD crashes you may need to install the latest version using: 
+> **참고** OpenOCD가 비정상 종료된다면 최신 버전을 설치해야 할 수 있습니다.
+
 ```text
 $ brew install --HEAD openocd
 ```
 
-## Install tools with [MacPorts]
+## [MacPorts]로 도구 설치
 
-``` text
+```text
 $ # GDB
 $ sudo port install arm-none-eabi-gcc
 
@@ -36,8 +37,6 @@ $ # QEMU
 $ sudo port install qemu
 ```
 
-
-
-That's all! Go to the [next section].
+이상입니다. [다음 섹션]으로 이동하세요.
 
 [next section]: verify.md

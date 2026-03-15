@@ -1,57 +1,62 @@
-# Peripherals as State Machines
+# 상태 머신으로서의 주변장치
 
-The peripherals of a microcontroller can be thought of as set of state machines. For example, the configuration of a simplified [GPIO pin] could be represented as the following tree of states:
+마이크로컨트롤러의 주변장치는 상태 머신 집합으로 볼 수 있습니다.
+예를 들어 단순화한 [GPIO pin] 설정은 다음과 같은 상태 트리로 표현할 수 있습니다.
 
 [GPIO pin]: https://en.wikipedia.org/wiki/General-purpose_input/output
 
-* Disabled
-* Enabled
-    * Configured as Output
-        * Output: High
-        * Output: Low
-    * Configured as Input
-        * Input: High Resistance
-        * Input: Pulled Low
-        * Input: Pulled High
+- 비활성화(Disabled)
+- 활성화(Enabled)
+  - 출력으로 설정(Configured as Output)
+    - 출력: High
+    - 출력: Low
+  - 입력으로 설정(Configured as Input)
+    - 입력: 고저항(High Resistance)
+    - 입력: Pull Low
+    - 입력: Pull High
 
-If the peripheral starts in the `Disabled` mode, to move to the `Input: High Resistance` mode, we must perform the following steps:
+주변장치가 `Disabled` 모드에서 시작해서 `Input: High Resistance` 모드로 이동하려면
+다음 단계를 거쳐야 합니다.
 
 1. Disabled
 2. Enabled
 3. Configured as Input
 4. Input: High Resistance
 
-If we wanted to move from `Input: High Resistance` to `Input: Pulled Low`, we must perform the following steps:
+`Input: High Resistance`에서 `Input: Pulled Low`로 이동하려면
+다음 단계를 수행해야 합니다.
 
 1. Input: High Resistance
 2. Input: Pulled Low
 
-Similarly, if we want to move a GPIO pin from configured as `Input: Pulled Low` to `Output: High`, we must perform the following steps:
+마찬가지로 GPIO 핀을 `Input: Pulled Low`에서 `Output: High`로 바꾸려면
+다음 단계를 거쳐야 합니다.
 
 1. Input: Pulled Low
 2. Configured as Input
 3. Configured as Output
 4. Output: High
 
-## Hardware Representation
+## 하드웨어 표현
 
-Typically the states listed above are set by writing values to given registers mapped to a GPIO peripheral. Let's define an imaginary GPIO Configuration Register to illustrate this:
+위 상태들은 보통 GPIO 주변장치에 매핑된 레지스터에 값을 써서 설정합니다.
+설명을 위해 가상의 GPIO 설정 레지스터를 정의해 보겠습니다.
 
-| Name         | Bit Number(s) | Value | Meaning   | Notes |
-| ---:         | ------------: | ----: | ------:   | ----: |
-| enable       | 0             | 0     | disabled  | Disables the GPIO |
-|              |               | 1     | enabled   | Enables the GPIO |
-| direction    | 1             | 0     | input     | Sets the direction to Input |
-|              |               | 1     | output    | Sets the direction to Output |
-| input_mode   | 2..3          | 00    | hi-z      | Sets the input as high resistance |
-|              |               | 01    | pull-low  | Input pin is pulled low |
-|              |               | 10    | pull-high | Input pin is pulled high |
-|              |               | 11    | n/a       | Invalid state. Do not set |
-| output_mode  | 4             | 0     | set-low   | Output pin is driven low |
-|              |               | 1     | set-high  | Output pin is driven high |
-| input_status | 5             | x     | in-val    | 0 if input is < 1.5v, 1 if input >= 1.5v |
+|         이름 | 비트 번호 |  값 |      의미 |                          설명 |
+| -----------: | --------: | --: | --------: | ----------------------------: |
+|       enable |         0 |   0 |  disabled |                 GPIO 비활성화 |
+|              |           |   1 |   enabled |                   GPIO 활성화 |
+|    direction |         1 |   0 |     input |                입력 방향 설정 |
+|              |           |   1 |    output |                출력 방향 설정 |
+|   input_mode |      2..3 |  00 |      hi-z |        입력을 고저항으로 설정 |
+|              |           |  01 |  pull-low |              입력 핀 pull-low |
+|              |           |  10 | pull-high |             입력 핀 pull-high |
+|              |           |  11 |       n/a | 유효하지 않은 상태. 설정 금지 |
+|  output_mode |         4 |   0 |   set-low |              출력 핀 low 구동 |
+|              |           |   1 |  set-high |             출력 핀 high 구동 |
+| input_status |         5 |   x |    in-val |  입력 < 1.5V면 0, >= 1.5V면 1 |
 
-We _could_ expose the following structure in Rust to control this GPIO:
+Rust에서 이 GPIO를 제어하기 위해 다음 구조체를 노출할 수도 있습니다.
 
 ```rust,ignore
 /// GPIO interface
@@ -91,8 +96,14 @@ impl GpioConfig {
 }
 ```
 
-However, this would allow us to modify certain registers that do not make sense. For example, what happens if we set the `output_mode` field when our GPIO is configured as an input? 
+하지만 이 방식은 의미 없는 레지스터 수정도 허용합니다.
+예를 들어 GPIO가 입력으로 설정되어 있는데 `output_mode` 필드를 바꾸면 어떻게 될까요?
 
-In general, use of this structure would allow us to reach states not defined by our state machine above: e.g. an output that is pulled low, or an input that is set high. For some hardware, this may not matter. On other hardware, it could cause unexpected or undefined behavior!
+일반적으로 이 구조체를 그대로 쓰면,
+위 상태 머신에 정의되지 않은 상태에도 도달할 수 있습니다.
+예를 들어 pull-low인 출력이나 high로 설정된 입력 같은 상태입니다.
+하드웨어에 따라 영향이 없을 수도 있지만,
+예상치 못한 동작이나 정의되지 않은 동작을 일으킬 수도 있습니다.
 
-Although this interface is convenient to write, it doesn't enforce the design contracts set out by our hardware implementation.
+이 인터페이스는 작성은 편하지만,
+하드웨어 구현이 요구하는 설계 계약(design contract)을 강제하지 못합니다.

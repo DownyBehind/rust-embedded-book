@@ -1,33 +1,68 @@
 # Korean Translation Guide
 
-## Goals
+## 목표
 
-- Keep technical meaning identical to upstream.
-- Preserve mdBook structure and link integrity.
-- Maintain consistent terminology across chapters.
+- 기술적 의미를 upstream과 동일하게 유지한다.
+- mdBook 구조와 링크 무결성을 유지한다.
+- 챕터 간 용어 일관성을 유지한다.
 
-## Non-negotiable Rules
+## 저장소 운영 모델 (별도 레포)
 
-- Do not rename files or directories referenced by `src/SUMMARY.md`.
-- Do not change code behavior in examples.
-- Keep relative links and image paths as-is unless they are already broken.
-- Keep license and attribution statements intact.
+- origin: 한글 번역 저장소
+- upstream: 원문 저장소 (rust-embedded/book)
+- 원문 저장소는 모니터링/동기화 기준으로만 사용한다.
+- 번역 결과는 origin에만 반영하고 관리한다.
 
-## Translation Style
+### 정책
 
-- Prefer clear, direct Korean over literal word-by-word translation.
-- Keep product names, crate names, and commands in original form.
-- Translate headings and body text, but preserve markdown structure.
+- upstream으로 직접 push하지 않는다.
+- 원문 반영은 "가져오기(fetch) -> 변경 검토 -> 한국어 반영 -> origin 배포" 순서로 진행한다.
 
-## PR Unit
+### 기본 원칙
 
-- Recommended size: 1-3 chapters or 8-12 files.
-- Each PR must include validation results from build/test/link checks.
+- 번역 저장소에서는 파일 경로 구조를 upstream과 동일하게 유지한다.
+- `src/SUMMARY.md`에 연결된 파일/디렉터리 이름을 임의로 변경하지 않는다.
+- 예제 코드의 동작 의미를 바꾸지 않는다.
+- 링크/이미지 상대 경로는 깨진 경우가 아니면 유지한다.
+- 라이선스/저작권/출처 표시는 유지한다.
 
-## Weekly Upstream Sync
+## 번역 스타일
 
-1. Fetch upstream changes.
-2. Classify changes: new files, moved files, prose, links.
-3. Apply updates to translation branch.
-4. Run validation.
-5. Merge and publish.
+- 직역보다 명확한 한국어 문장을 우선한다.
+- 제품명, crate 이름, 명령어는 원문 표기를 유지한다.
+- 제목/본문은 번역하되 Markdown 구조는 보존한다.
+
+## PR 단위
+
+- 권장 크기: 1~3개 챕터 또는 8~12개 파일.
+- PR에는 최소 문서 진단 결과를 포함한다.
+
+## 업스트림 동기화 절차
+
+1. 변경 가져오기
+   - `git fetch upstream`
+2. 변경 확인
+   - `git log --oneline HEAD..upstream/master`
+   - 신규/이동/삭제 파일, 링크 변경, 본문 변경 분류
+3. 반영
+   - `master` 기준 병합 또는 동기화 브랜치에서 반영
+4. 검증
+   - 문서 오류/링크/빌드 점검
+5. 배포
+   - origin에 푸시
+
+## 권장 운영 루틴
+
+1. 모니터링
+   - `scripts/check-upstream.sh`
+2. 변경 있음
+   - 작업 브랜치 생성 후 필요한 변경만 반영
+   - 번역 갱신 및 검증
+3. 배포
+   - origin으로 push 및 PR 생성
+
+## 충돌 처리 원칙
+
+- 원문 변경과 번역이 충돌하면 원문 구조를 우선 반영한다.
+- 번역 문장은 변경된 원문 기준으로 다시 번역한다.
+- 대규모 충돌은 파일 단위로 나눠서 해결한다.

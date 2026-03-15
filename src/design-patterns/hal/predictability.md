@@ -1,24 +1,26 @@
-# Predictability
-
+# 예측 가능성
 
 <a id="c-ctor"></a>
+
 ## Constructors are used instead of extension traits (C-CTOR)
 
-All peripherals to which the HAL adds functionality should be wrapped in a new
-type, even if no additional fields are required for that functionality.
+HAL이 기능을 추가하는 모든 주변장치는
+해당 기능에 추가 필드가 필요하지 않더라도
+새 래퍼 타입으로 감싸야 합니다.
 
-Extension traits implemented for the raw peripheral should be avoided.
+원시 주변장치 타입에 직접 구현하는 확장 trait는 피하는 것이 좋습니다.
 
 <a id="c-inline"></a>
+
 ## Methods are decorated with `#[inline]` where appropriate (C-INLINE)
 
-The Rust compiler does not by default perform full inlining across crate
-boundaries. As embedded applications are sensitive to unexpected code size
-increases, `#[inline]` should be used to guide the compiler as follows:
+Rust 컴파일러는 기본적으로 크레이트 경계를 넘는 완전한 인라이닝을 수행하지 않습니다.
+임베디드 애플리케이션은 예상치 못한 코드 크기 증가에 민감하므로,
+다음 기준에 따라 `#[inline]`으로 컴파일러를 유도해야 합니다.
 
-* All "small" functions should be marked `#[inline]`. What qualifies as "small"
-  is subjective, but generally all functions that are expected to compile down
-  to single-digit instruction sequences qualify as small.
-* Functions that are very likely to take constant values as parameters should be
-  marked as `#[inline]`. This enables the compiler to compute even complicated
-  initialization logic at compile time, provided the function inputs are known.
+- "작은" 함수에는 모두 `#[inline]`을 붙이는 것이 좋습니다.
+  "작다"의 기준은 다소 주관적이지만,
+  일반적으로 한 자릿수 명령어 시퀀스로 컴파일될 함수는 작은 함수로 볼 수 있습니다.
+- 상수 값을 인자로 받을 가능성이 높은 함수도 `#[inline]`을 권장합니다.
+  함수 입력이 알려진 경우,
+  비교적 복잡한 초기화 로직도 컴파일 타임 계산으로 넘길 수 있습니다.

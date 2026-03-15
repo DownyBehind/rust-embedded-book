@@ -1,11 +1,10 @@
-# Performing math functionality with `#[no_std]`
+# `#[no_std]`에서 수학 기능 사용하기
 
-If you want to perform math related functionality like calculating the squareroot or
-the exponential of a number and you have the full standard library available, your code
-might look like this:
+제곱근 계산이나 지수 함수처럼 수학 기능을 사용하고 싶고,
+전체 표준 라이브러리를 사용할 수 있다면 코드는 다음과 비슷할 것입니다.
 
 ```rs
-//! Some mathematical functions with standard support available
+//! 표준 라이브러리를 사용할 수 있을 때의 수학 함수 예제
 
 fn main() {
     let float: f32 = 4.82832;
@@ -26,9 +25,9 @@ fn main() {
 }
 ```
 
-Without standard library support, these functions are not available.
-An external crate like [`libm`](https://crates.io/crates/libm) can be used instead. The example code
-would then look like this:
+표준 라이브러리를 사용할 수 없으면 위 함수들을 직접 쓸 수 없습니다.
+대신 [`libm`](https://crates.io/crates/libm) 같은 외부 크레이트를 사용할 수 있습니다.
+예제 코드는 다음과 같습니다.
 
 ```rs
 #![no_main]
@@ -58,16 +57,16 @@ fn main() -> ! {
         exponential_of_four
     )
     .unwrap();
-    // exit QEMU
-    // NOTE do not run this on hardware; it can corrupt OpenOCD state
+    // QEMU 종료
+    // 주의: 실제 하드웨어에서 실행하면 OpenOCD 상태를 손상시킬 수 있음
     // debug::exit(debug::EXIT_SUCCESS);
 
     loop {}
 }
 ```
 
-If you need to perform more complex operations like DSP signal processing or advanced linear
-algebra on your MCU, the following crates might help you
+MCU에서 DSP 신호 처리나 고급 선형대수 같은
+더 복잡한 연산이 필요하다면 다음 크레이트가 도움이 될 수 있습니다.
 
 - [CMSIS DSP library binding](https://github.com/jacobrosenthal/cmsis-dsp-sys)
 - [`constgebra`](https://crates.io/crates/constgebra)
