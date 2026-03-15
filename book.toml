@@ -7,3 +7,5 @@ title = "임베디드 러스트 북"
 
 [output.html]
 git-repository-url = "https://github.com/DownyBehind/rust-embedded-book"
+site-url = "/rust-embedded-book/"
+git-repository-icon = "fa-github"
