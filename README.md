@@ -12,18 +12,26 @@ See [the issue tracker] for more details. This book is a living document, and is
 
 This book is located at https://docs.rust-embedded.org/book/
 
+## Korean Translation
+
+This repository also maintains a Korean translation of the book.
+
+- The Korean content is translated from upstream and kept in the same mdBook structure.
+- Upstream changes are monitored and then reflected in Korean through follow-up updates.
+- Translation operation details are documented in `TRANSLATION_GUIDE.ko.md`.
+
 ## License
 
 The Embedded Rust Book (this project) is distributed under the following licenses:
 
-* The code samples and free-standing Cargo projects contained within this book are licensed under the terms of both the [MIT License] and the [Apache License v2.0].
-* The written prose contained within this book is licensed under the terms of the Creative Commons [CC-BY-SA v4.0] license.
+- The code samples and free-standing Cargo projects contained within this book are licensed under the terms of both the [MIT License] and the [Apache License v2.0].
+- The written prose contained within this book is licensed under the terms of the Creative Commons [CC-BY-SA v4.0] license.
 
 Copies of the licenses used by this project may also be found here:
 
-* [MIT License Hosted]
-* [Apache License v2.0 Hosted]
-* [CC-BY-SA v4.0 Hosted]
+- [MIT License Hosted]
+- [Apache License v2.0 Hosted]
+- [CC-BY-SA v4.0 Hosted]
 
 [MIT License]: ./LICENSE-MIT
 [Apache License v2.0]: ./LICENSE-APACHE
