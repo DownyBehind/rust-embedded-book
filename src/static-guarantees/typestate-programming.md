@@ -1,6 +1,9 @@
-# Typestate Programming
+# 타입 상태 프로그래밍
 
-The concept of [typestates] describes the encoding of information about the current state of an object into the type of that object. Although this can sound a little arcane, if you have used the [Builder Pattern] in Rust, you have already started using Typestate Programming!
+[typestates] 개념은 객체의 현재 상태 정보를
+그 객체의 타입에 인코딩하는 방식을 설명합니다.
+다소 난해하게 들릴 수 있지만,
+Rust에서 [Builder Pattern]을 사용해 봤다면 이미 타입 상태 프로그래밍을 시작한 것입니다.
 
 [typestates]: https://en.wikipedia.org/wiki/Typestate_analysis
 [Builder Pattern]: https://doc.rust-lang.org/1.0.0/style/ownership/builders.html
@@ -49,17 +52,25 @@ fn main() {
 }
 ```
 
-In this example, there is no direct way to create a `Foo` object. We must create a `FooBuilder`, and properly initialize it before we can obtain the `Foo` object we want.
+이 예제에서는 `Foo` 객체를 직접 생성할 방법이 없습니다.
+원하는 `Foo`를 얻으려면 먼저 `FooBuilder`를 만들고 올바르게 초기화해야 합니다.
 
-This minimal example encodes two states:
+이 간단한 예제는 두 가지 상태를 인코딩합니다.
 
-* `FooBuilder`, which represents an "unconfigured", or "configuration in process" state
-* `Foo`, which represents a "configured", or "ready to use" state.
+- `FooBuilder`: "미설정" 또는 "설정 진행 중" 상태
+- `Foo`: "설정 완료" 또는 "사용 준비 완료" 상태
 
-## Strong Types
+## 강한 타입 시스템
 
-Because Rust has a [Strong Type System], there is no easy way to magically create an instance of `Foo`, or to turn a `FooBuilder` into a `Foo` without calling the `into_foo()` method. Additionally, calling the `into_foo()` method consumes the original `FooBuilder` structure, meaning it can not be reused without the creation of a new instance.
+Rust는 [Strong Type System]을 갖고 있기 때문에,
+`into_foo()`를 호출하지 않고 `FooBuilder`를 `Foo`로 바꾸거나
+`Foo` 인스턴스를 "마법처럼" 만드는 쉬운 우회 방법이 없습니다.
+또한 `into_foo()`를 호출하면 원래 `FooBuilder`가 소비되므로,
+새 인스턴스를 만들지 않으면 재사용할 수 없습니다.
 
 [Strong Type System]: https://en.wikipedia.org/wiki/Strong_and_weak_typing
 
-This allows us to represent the states of our system as types, and to include the necessary actions for state transitions into the methods that exchange one type for another. By creating a `FooBuilder`, and exchanging it for a `Foo` object, we have walked through the steps of a basic state machine.
+이 방식 덕분에 시스템 상태를 타입으로 표현하고,
+상태 전이에 필요한 동작을 타입 변환 메서드에 포함할 수 있습니다.
+`FooBuilder`를 만든 뒤 `Foo`로 바꾸는 과정 자체가
+기본적인 상태 머신 단계를 밟는 것과 같습니다.

@@ -1,64 +1,105 @@
-# Portability
+# 이식성
 
-In embedded environments portability is a very important topic: Every vendor and even each family from a single manufacturer offers different peripherals and capabilities and similarly the ways to interact with the peripherals will vary.
+임베디드 환경에서 이식성은 매우 중요한 주제입니다.
+벤더마다, 심지어 같은 제조사 안에서도 제품군마다 제공하는 주변장치와 기능이 다르며,
+주변장치와 상호작용하는 방식도 달라집니다.
 
-A common way to equalize such differences is via a layer called Hardware Abstraction layer or **HAL**.
+이 차이를 완화하는 일반적인 방법은 하드웨어 추상화 계층,
+즉 **HAL(Hardware Abstraction Layer)**을 두는 것입니다.
 
-> Hardware abstractions are sets of routines in software that emulate some platform-specific details, giving programs direct access to the hardware resources.
+> 하드웨어 추상화는 플랫폼별 세부 사항을 소프트웨어 루틴으로 감싸,
+> 프로그램이 하드웨어 자원에 직접 접근할 수 있게 해 주는 계층입니다.
 >
-> They often allow programmers to write device-independent, high performance applications by providing standard operating system (OS) calls to hardware.
+> 이를 통해 표준 OS 호출 형태로 하드웨어를 제공하여,
+> 장치 독립적이면서도 성능 좋은 애플리케이션을 작성할 수 있게 합니다.
 >
-> *Wikipedia: [Hardware Abstraction Layer]*
+> _위키백과: [Hardware Abstraction Layer]_
 
 [Hardware Abstraction Layer]: https://en.wikipedia.org/wiki/Hardware_abstraction
 
-Embedded systems are a bit special in this regard since we typically do not have operating systems and user installable software but firmware images which are compiled as a whole as well as a number of other constraints. So while the traditional approach as defined by Wikipedia could potentially work it is likely not the most productive approach to ensure portability.
+임베디드 시스템은 이 점에서 조금 특수합니다.
+일반적으로 운영체제와 사용자 설치 소프트웨어가 아니라,
+하나의 펌웨어 이미지로 전체가 함께 컴파일되고 여러 제약이 존재하기 때문입니다.
+따라서 위키백과식 전통적인 접근도 이론상 가능하지만,
+이식성을 확보하는 가장 생산적인 방법은 아닐 수 있습니다.
 
-How do we do this in Rust? Enter **[embedded-hal]**...
+그렇다면 Rust에서는 어떻게 할까요? 여기서 **[embedded-hal]**이 등장합니다.
 
-## What is [embedded-hal]?
+## [embedded-hal]이란?
 
-In a nutshell it is a set of traits which define implementation contracts between **HAL implementations**, **drivers** and **applications (or firmwares)**. Those contracts include both capabilities (i.e. if a trait is implemented for a certain type, the **HAL implementation** provides a certain capability) and methods (i.e. if you can construct a type implementing a trait it is guaranteed that you have the methods specified in the trait available).
+간단히 말해, **HAL 구현체**, **드라이버**, **애플리케이션(펌웨어)** 사이의
+구현 계약을 정의한 trait 집합입니다.
+이 계약에는 기능(capability)과 메서드가 모두 포함됩니다.
+즉 어떤 타입이 특정 trait를 구현하면 그 HAL이 해당 기능을 제공한다는 뜻이고,
+그 trait를 구현한 타입을 만들 수 있다면 trait에 정의된 메서드를 사용할 수 있다는 뜻입니다.
 
-A typical layering might look like this:
+전형적인 계층 구조는 다음과 같습니다.
 
 ![](../assets/rust_layers.svg)
 
-Some of the defined traits in **[embedded-hal]** are:
-* GPIO (input and output pins)
-* Serial communication
-* I2C
-* SPI
-* Timers/Countdowns
-* Analog Digital Conversion
+**[embedded-hal]**에서 정의하는 대표 trait는 다음과 같습니다.
 
-The main reason for having the **embedded-hal** traits and crates implementing and using them is to keep complexity in check. If you consider that an application might have to implement the use of the peripheral in the hardware as well as the application and potentially drivers for additional hardware components, then it should be easy to see that the re-usability is very limited. Expressed mathematically, if **M** is the number of peripheral HAL implementations and **N** the number of drivers then if we were to reinvent the wheel for every application then we would end up with **M*N** implementations while by using the *API* provided by the **[embedded-hal]** traits will make the implementation complexity approach **M+N**. Of course there're additional benefits to be had, such as less trial-and-error due to a well-defined and ready-to-use APIs.
+- GPIO (입력/출력 핀)
+- 시리얼 통신
+- I2C
+- SPI
+- 타이머/카운트다운
+- 아날로그-디지털 변환(ADC)
 
-## Users of the [embedded-hal]
+**embedded-hal** trait와 이를 구현/사용하는 크레이트가 중요한 핵심 이유는
+복잡도를 관리하기 위해서입니다.
+애플리케이션이 하드웨어 주변장치 사용 코드, 애플리케이션 로직,
+추가 하드웨어용 드라이버까지 모두 직접 구현해야 한다고 생각해 보면
+재사용성이 매우 낮아집니다.
 
-As said above there are three main users of the HAL:
+수식으로 보면 주변장치 HAL 구현 수를 **M**, 드라이버 수를 **N**이라 할 때,
+애플리케이션마다 모든 것을 새로 만들면 구현 수는 **M\*N**에 가깝습니다.
+반면 **[embedded-hal]** trait API를 사용하면 복잡도는 **M+N**에 가까워집니다.
+잘 정의된 즉시 사용 가능한 API 덕분에 시행착오가 줄어든다는 장점도 있습니다.
 
-### HAL implementation
+## [embedded-hal]의 사용자
 
-A HAL implementation provides the interfacing between the hardware and the users of the HAL traits. Typical implementations consist of three parts:
-* One or more hardware specific types
-* Functions to create and initialize such a type, often providing various configuration options (speed, operation mode, use pins, etc.)
-* one or more `trait` `impl` of **[embedded-hal]** traits for that type
+앞서 말했듯 HAL의 주요 사용자는 세 부류입니다.
 
-Such a **HAL implementation** can come in various flavours:
-* Via low-level hardware access, e.g. via registers
-* Via operating system, e.g. by using the `sysfs` under Linux
-* Via adapter, e.g. a mock of types for unit testing
-* Via driver for hardware adapters, e.g. I2C multiplexer or GPIO expander
+### HAL 구현체
 
-### Driver
+HAL 구현체는 하드웨어와 HAL trait 사용자 사이의 인터페이스를 제공합니다.
+일반적으로 구현체는 다음 세 부분으로 이루어집니다.
 
-A driver implements a set of custom functionality for an internal or external component, connected to a peripheral implementing the [embedded-hal] traits. Typical examples for such drivers include various sensors (temperature, magnetometer, accelerometer, light), display devices (LED arrays, LCD displays) and actuators (motors, transmitters).
+- 하나 이상의 하드웨어 특화 타입
+- 해당 타입을 생성/초기화하는 함수(속도, 동작 모드, 핀 사용 등 설정 옵션 포함)
+- 해당 타입에 대한 **[embedded-hal]** trait `impl`
 
-A driver has to be initialized with an instance of type that implements a certain `trait` of the [embedded-hal] which is ensured via trait bound and provides its own type instance with a custom set of methods allowing to interact with the driven device.
+이런 **HAL 구현체**는 다양한 형태로 존재할 수 있습니다.
 
-### Application
+- 저수준 하드웨어 접근 기반(예: 레지스터 직접 접근)
+- 운영체제 기반(예: Linux의 `sysfs` 사용)
+- 어댑터 기반(예: 유닛 테스트용 mock 타입)
+- 하드웨어 어댑터용 드라이버 기반(예: I2C 멀티플렉서, GPIO 익스팬더)
 
-The application binds the various parts together and ensures that the desired functionality is achieved. When porting between different systems, this is the part which requires the most adaptation efforts, since the application needs to correctly initialize the real hardware via the HAL implementation and the initialisation of different hardware differs, sometimes drastically so. Also the user choice often plays a big role, since components can be physically connected to different terminals, hardware buses sometimes need external hardware to match the configuration or there are different trade-offs to be made in the use of internal peripherals (e.g. multiple timers with different capabilities are available or peripherals conflict with others).
+### 드라이버
+
+드라이버는 [embedded-hal] trait를 구현한 주변장치에 연결된 내부/외부 컴포넌트의
+맞춤 기능을 구현합니다.
+대표 예시는 센서(온도, 자기장, 가속도, 조도),
+디스플레이 장치(LED 어레이, LCD),
+액추에이터(모터, 송신기)입니다.
+
+드라이버는 [embedded-hal]의 특정 `trait`를 구현한 타입 인스턴스로 초기화되어야 하며,
+이는 trait bound로 보장됩니다.
+초기화 후에는 대상 장치를 제어하기 위한 고유 메서드 집합을 제공하는 타입을 반환합니다.
+
+### 애플리케이션
+
+애플리케이션은 위 구성요소를 결합해 최종 기능을 완성합니다.
+서로 다른 시스템으로 포팅할 때 가장 많은 적응 작업이 필요한 부분도 보통 여기입니다.
+애플리케이션이 HAL 구현체를 통해 실제 하드웨어를 올바르게 초기화해야 하는데,
+하드웨어별 초기화 방식이 크게 다를 수 있기 때문입니다.
+
+또한 사용자 선택도 큰 영향을 줍니다.
+컴포넌트가 물리적으로 다른 핀에 연결될 수 있고,
+버스 구성을 맞추기 위해 외부 하드웨어가 필요할 수 있으며,
+내부 주변장치 사용 시에도 여러 트레이드오프가 존재합니다.
+(예: 기능이 다른 타이머가 여러 개 있거나 주변장치 간 충돌이 있음)
 
 [embedded-hal]: https://crates.io/crates/embedded-hal

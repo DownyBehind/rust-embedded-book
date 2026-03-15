@@ -1,44 +1,74 @@
-# Peripherals
+# 주변장치
 
-## What are Peripherals?
+## 주변장치란?
 
-Most Microcontrollers have more than just a CPU, RAM, or Flash Memory - they contain sections of silicon which are used for interacting with systems outside of the microcontroller, as well as directly and indirectly interacting with their surroundings in the world via sensors, motor controllers, or human interfaces such as a display or keyboard. These components are collectively known as Peripherals.
+대부분의 마이크로컨트롤러는 CPU, RAM, 플래시 메모리만 있는 것이 아닙니다.
+마이크로컨트롤러 바깥 시스템과 상호작용하거나, 센서/모터 컨트롤러/디스플레이/키보드 같은
+인터페이스를 통해 주변 환경과 직간접적으로 상호작용하는 실리콘 블록이 함께 들어 있습니다.
+이 구성 요소들을 통틀어 주변장치(Peripherals)라고 부릅니다.
 
-These peripherals are useful because they allow a developer to offload processing to them, avoiding having to handle everything in software. Similar to how a desktop developer would offload graphics processing to a video card, embedded developers can offload some tasks to peripherals allowing the CPU to spend its time doing something else important, or doing nothing in order to save power.
+주변장치가 유용한 이유는 개발자가 일부 처리를 주변장치에 오프로드할 수 있기 때문입니다.
+그래픽 처리를 비디오 카드에 오프로드하는 데스크톱 개발과 비슷하게,
+임베디드 개발자도 일부 작업을 주변장치로 넘겨 CPU가 더 중요한 일을 하거나,
+전력 절감을 위해 아무것도 하지 않도록 둘 수 있습니다.
 
-If you look at the main circuit board in an old-fashioned home computer from the 1970s or 1980s (and actually, the desktop PCs of yesterday are not so far removed from the embedded systems of today) you would expect to see:
+1970~80년대 가정용 컴퓨터의 메인 보드를 보면
+(그리고 사실 과거 데스크톱 PC는 오늘날 임베디드 시스템과 크게 다르지 않습니다)
+다음 구성요소를 볼 수 있습니다.
 
-* A processor
-* A RAM chip
-* A ROM chip
-* An I/O controller
+- 프로세서
+- RAM 칩
+- ROM 칩
+- I/O 컨트롤러
 
-The RAM chip, ROM chip and I/O controller (the peripheral in this system) would be joined to the processor through a series of parallel traces known as a 'bus'. This bus carries address information, which selects which device on the bus the processor wishes to communicate with, and a data bus which carries the actual data. In our embedded microcontrollers, the same principles apply - it's just that everything is packed on to a single piece of silicon.
+RAM 칩, ROM 칩, I/O 컨트롤러(이 시스템에서의 주변장치)는 '버스'라고 불리는 병렬 신호선으로
+프로세서와 연결됩니다. 이 버스는 프로세서가 어떤 장치와 통신할지 선택하는 주소 정보를 전달하고,
+실제 데이터는 데이터 버스로 전달합니다. 임베디드 마이크로컨트롤러도 원리는 같고,
+단지 모든 것이 한 조각 실리콘 안에 들어 있을 뿐입니다.
 
-However, unlike graphics cards, which typically have a Software API like Vulkan, Metal, or OpenGL, peripherals are exposed to our Microcontroller with a hardware interface, which is mapped to a chunk of the memory.
+다만 주변장치는 Vulkan, Metal, OpenGL 같은 소프트웨어 API를 가진 그래픽 카드와 달리,
+메모리 일부에 매핑된 하드웨어 인터페이스로 마이크로컨트롤러에 노출됩니다.
 
-## Linear and Real Memory Space
+## 선형 주소 공간과 실제 메모리 공간
 
-On a microcontroller, writing some data to some other arbitrary address, such as `0x4000_0000` or `0x0000_0000`, may also be a completely valid action.
+마이크로컨트롤러에서는 `0x4000_0000`이나 `0x0000_0000` 같은 임의 주소에 데이터를 쓰는 동작이
+완전히 유효할 수 있습니다.
 
-On a desktop system, access to memory is tightly controlled by the MMU, or Memory Management Unit. This component has two major responsibilities: enforcing access permission to sections of memory (preventing one process from reading or modifying the memory of another process); and re-mapping segments of the physical memory to virtual memory ranges used in software. Microcontrollers do not typically have an MMU, and instead only use real physical addresses in software.
+데스크톱 시스템에서는 MMU(Memory Management Unit)가 메모리 접근을 엄격하게 제어합니다.
+MMU의 주요 역할은 두 가지입니다. 메모리 구간 접근 권한을 강제해 프로세스 간 메모리 침범을 막는 것,
+그리고 물리 메모리 구간을 소프트웨어가 사용하는 가상 메모리 범위로 재매핑하는 것입니다.
+마이크로컨트롤러는 보통 MMU가 없고, 대신 소프트웨어에서 실제 물리 주소를 직접 사용합니다.
 
-Although 32 bit microcontrollers have a real and linear address space from `0x0000_0000`, and `0xFFFF_FFFF`, they generally only use a few hundred kilobytes of that range for actual memory. This leaves a significant amount of address space remaining. In earlier chapters, we were talking about RAM being located at address `0x2000_0000`. If our RAM was 64 KiB long (i.e. with a maximum address of 0xFFFF) then addresses `0x2000_0000` to `0x2000_FFFF` would correspond to our RAM. When we write to a variable which lives at address `0x2000_1234`, what happens internally is that some logic detects the upper portion of the address (0x2000 in this example) and then activates the RAM so that it can act upon the lower portion of the address (0x1234 in this case). On a Cortex-M we also have our Flash ROM mapped in at address `0x0000_0000` up to, say, address `0x0007_FFFF` (if we have a 512 KiB Flash ROM). Rather than ignore all remaining space between these two regions, Microcontroller designers instead mapped the interface for peripherals in certain memory locations. This ends up looking something like this:
+32비트 마이크로컨트롤러는 `0x0000_0000`부터 `0xFFFF_FFFF`까지 선형 주소 공간을 가지지만,
+실제 메모리로 쓰는 범위는 보통 수백 KiB 정도에 불과합니다. 따라서 주소 공간이 많이 남습니다.
+앞 장에서 RAM이 `0x2000_0000`에 있다고 했습니다. RAM이 64 KiB라면(최대 오프셋이 0xFFFF),
+`0x2000_0000`부터 `0x2000_FFFF`까지가 RAM에 해당합니다.
+`0x2000_1234`에 있는 변수에 값을 쓸 때 내부에서는 주소 상위 비트(이 예제에서는 0x2000)를 보고
+RAM 블록을 선택한 뒤, 하위 비트(0x1234)를 실제 오프셋으로 사용합니다.
+Cortex-M에서는 플래시 ROM도 `0x0000_0000`부터 예를 들어 `0x0007_FFFF`(플래시 512 KiB인 경우)까지 매핑됩니다.
+마이크로컨트롤러 설계자는 이 두 구간 사이의 남은 공간을 비워 두지 않고,
+특정 메모리 주소에 주변장치 인터페이스를 매핑합니다. 대략 다음과 같은 형태가 됩니다.
 
 ![](../assets/nrf52-memory-map.png)
 
 [Nordic nRF52832 Datasheet (pdf)]
 
-## Memory Mapped Peripherals
+## 메모리 매핑 주변장치
 
-Interaction with these peripherals is simple at a first glance - write the right data to the correct address. For example, sending a 32 bit word over a serial port could be as direct as writing that 32 bit word to a certain memory address. The Serial Port Peripheral would then take over and send out the data automatically.
+이 주변장치와의 상호작용은 처음 보면 단순합니다. 올바른 주소에 올바른 데이터를 쓰면 됩니다.
+예를 들어 시리얼 포트로 32비트 워드를 보내는 일은, 특정 메모리 주소에 그 32비트 값을 쓰는 것으로
+끝날 수 있습니다. 그러면 시리얼 포트 주변장치가 나머지 전송을 자동으로 처리합니다.
 
-Configuration of these peripherals works similarly. Instead of calling a function to configure a peripheral, a chunk of memory is exposed which serves as the hardware API. Write `0x8000_0000` to a SPI Frequency Configuration Register, and the SPI port will send data at 8 Megabits per second. Write `0x0200_0000` to the same address, and the SPI port will send data at 125 Kilobits per second. These configuration registers look a little bit like this:
+주변장치 설정도 비슷합니다. 주변장치 설정 함수를 호출하는 대신,
+하드웨어 API 역할을 하는 메모리 구간이 노출됩니다. SPI 주파수 설정 레지스터에
+`0x8000_0000`을 쓰면 SPI 포트가 8Mbps로 동작하고,
+같은 주소에 `0x0200_0000`을 쓰면 125Kbps로 동작합니다.
+이런 설정 레지스터는 대략 다음처럼 생겼습니다.
 
 ![](../assets/nrf52-spi-frequency-register.png)
 
 [Nordic nRF52832 Datasheet (pdf)]
 
-This interface is how interactions with the hardware are made, no matter what language is used, whether that language is Assembly, C, or Rust.
+이 인터페이스는 언어가 무엇이든(Assembly, C, Rust) 하드웨어와 상호작용하는 기본 방식입니다.
 
 [Nordic nRF52832 Datasheet (pdf)]: http://infocenter.nordicsemi.com/pdf/nRF52832_PS_v1.1.pdf

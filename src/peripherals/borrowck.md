@@ -1,19 +1,25 @@
-## Mutable Global State
+## 변경 가능한 전역 상태
 
-Unfortunately, hardware is basically nothing but mutable global state, which can feel very frightening for a Rust developer. Hardware exists independently from the structures of the code we write, and can be modified at any time by the real world.
+불행히도 하드웨어는 본질적으로 변경 가능한 전역 상태 덩어리에 가깝고,
+이는 Rust 개발자에게 꽤 부담스럽게 느껴질 수 있습니다.
+하드웨어는 우리가 작성한 코드 구조와 독립적으로 존재하며,
+현실 세계에 의해 언제든 상태가 바뀔 수 있습니다.
 
-## What should our rules be?
+## 어떤 규칙이 필요할까?
 
-How can we reliably interact with these peripherals?
+이 주변장치와 신뢰성 있게 상호작용하려면 어떻게 해야 할까요?
 
-1. Always use `volatile` methods to read or write to peripheral memory, as it can change at any time
-2. In software, we should be able to share any number of read-only accesses to these peripherals
-3. If some software should have read-write access to a peripheral, it should hold the only reference to that peripheral
+1. 주변장치 메모리는 언제든 바뀔 수 있으므로 읽기/쓰기는 항상 `volatile` 접근을 사용한다.
+2. 소프트웨어에서는 읽기 전용 접근을 여러 곳에서 동시에 공유할 수 있어야 한다.
+3. 어떤 코드가 특정 주변장치에 읽기/쓰기를 해야 한다면, 그 코드는 해당 주변장치의 유일한 참조를 가져야 한다.
 
-## The Borrow Checker
+## 빌림 검사기(Borrow Checker)
 
-The last two of these rules sound suspiciously similar to what the Borrow Checker does already!
+마지막 두 규칙은 Borrow Checker가 이미 해 주는 일과 매우 비슷해 보입니다.
 
-Imagine if we could pass around ownership of these peripherals, or offer immutable or mutable references to them?
+주변장치의 소유권을 옮기거나, 불변/가변 참조를 제공할 수 있다면 어떨까요?
 
-Well, we can, but for the Borrow Checker, we need to have exactly one instance of each peripheral, so Rust can handle this correctly. Well, luckily in the hardware, there is only one instance of any given peripheral, but how can we expose that in the structure of our code?
+실제로 가능합니다. 다만 Borrow Checker가 올바르게 판단하려면,
+각 주변장치가 코드 상에서 정확히 하나의 인스턴스로 표현되어야 합니다.
+다행히 실제 하드웨어에서도 각 주변장치는 하나뿐입니다.
+문제는 그 사실을 코드 구조로 어떻게 드러내느냐입니다.

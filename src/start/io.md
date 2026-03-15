@@ -1,3 +1,3 @@
-# IO
+# 입출력
 
-> **TODO** Cover memory mapped I/O using registers.
+> **TODO** 레지스터를 사용한 메모리 매핑 I/O 내용을 다룹니다.

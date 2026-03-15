@@ -1,26 +1,27 @@
-# Concurrency
+# 동시성
 
-Concurrency happens whenever different parts of your program might execute
-at different times or out of order. In an embedded context, this includes:
+동시성은 프로그램의 서로 다른 부분이 서로 다른 시점에 실행되거나,
+실행 순서가 뒤섞일 수 있을 때 발생합니다.
+임베디드 맥락에서는 보통 다음을 포함합니다.
 
-* interrupt handlers, which run whenever the associated interrupt happens,
-* various forms of multithreading, where your microprocessor regularly swaps
-  between parts of your program,
-* and in some systems, multiple-core microprocessors, where each core can be
-  independently running a different part of your program at the same time.
+- 관련 인터럽트가 발생할 때마다 실행되는 인터럽트 핸들러
+- 마이크로프로세서가 프로그램 여러 부분을 번갈아 실행하는 다양한 멀티스레딩 형태
+- 일부 시스템에서 각 코어가 동시에 서로 다른 코드를 실행하는 멀티코어 프로세서
 
-Since many embedded programs need to deal with interrupts, concurrency will
-usually come up sooner or later, and it's also where many subtle and difficult
-bugs can occur. Luckily, Rust provides a number of abstractions and safety
-guarantees to help us write correct code.
+많은 임베디드 프로그램이 인터럽트를 다뤄야 하므로,
+동시성 이슈는 결국 마주치게 됩니다.
+또한 미묘하고 까다로운 버그가 많이 생기는 영역이기도 합니다.
+다행히 Rust는 올바른 코드를 작성할 수 있도록
+여러 추상화와 안전성 보장을 제공합니다.
 
-## No Concurrency
+## 동시성이 없는 경우
 
-The simplest concurrency for an embedded program is no concurrency: your
-software consists of a single main loop which just keeps running, and there
-are no interrupts at all. Sometimes this is perfectly suited to the problem
-at hand! Typically your loop will read some inputs, perform some processing,
-and write some outputs.
+임베디드 프로그램에서 가장 단순한 동시성 모델은
+"동시성이 아예 없는 모델"입니다.
+소프트웨어는 하나의 메인 루프만 계속 실행되고,
+인터럽트는 전혀 사용하지 않습니다.
+문제에 따라서는 이것이 가장 적합할 때도 많습니다.
+보통 루프는 입력을 읽고, 처리하고, 출력을 쓰는 형태입니다.
 
 ```rust,ignore
 #[entry]
@@ -34,29 +35,29 @@ fn main() {
 }
 ```
 
-Since there's no concurrency, there's no need to worry about sharing data
-between parts of your program or synchronising access to peripherals. If
-you can get away with such a simple approach this can be a great solution.
+동시성이 없으므로 프로그램 각 부분 간 데이터 공유나
+주변장치 접근 동기화를 걱정할 필요가 없습니다.
+이처럼 단순한 접근으로 해결 가능하다면 매우 좋은 해법입니다.
 
-## Global Mutable Data
+## 전역 가변 데이터
 
-Unlike non-embedded Rust, we will not usually have the luxury of creating
-heap allocations and passing references to that data into a newly-created
-thread. Instead, our interrupt handlers might be called at any time and must
-know how to access whatever shared memory we are using. At the lowest level,
-this means we must have _statically allocated_ mutable memory, which
-both the interrupt handler and the main code can refer to.
+일반 Rust 애플리케이션과 달리 임베디드에서는
+힙에 데이터를 만들고 새 스레드로 참조를 넘기는 방식을
+항상 여유롭게 쓰기 어렵습니다.
+대신 인터럽트 핸들러는 언제든 호출될 수 있고,
+공유 메모리에 접근하는 방법을 알고 있어야 합니다.
+가장 낮은 수준에서는 인터럽트 핸들러와 메인 코드가 함께 참조할
+_정적으로 할당된_ 가변 메모리가 필요합니다.
 
-In Rust, such [`static mut`] variables are always unsafe to read or write,
-because without taking special care, you might trigger a race condition,
-where your access to the variable is interrupted halfway through by an
-interrupt which also accesses that variable.
+Rust에서 이런 [`static mut`] 변수는 읽기/쓰기가 항상 unsafe입니다.
+특별한 주의 없이 사용하면 레이스 컨디션이 발생할 수 있기 때문입니다.
+즉 변수 접근 도중 인터럽트가 끼어들어 같은 변수에 접근할 수 있습니다.
 
 [`static mut`]: https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html#accessing-or-modifying-a-mutable-static-variable
 
-For an example of how this behaviour can cause subtle errors in your code,
-consider an embedded program which counts rising edges of some input signal
-in each one-second period (a frequency counter):
+이 동작이 얼마나 미묘한 오류를 만들 수 있는지 보기 위해,
+1초 동안 입력 신호의 상승 에지 개수를 세는
+주파수 카운터 예제를 보겠습니다.
 
 ```rust,ignore
 static mut COUNTER: u32 = 0;
@@ -81,23 +82,26 @@ fn timer() {
 }
 ```
 
-Each second, the timer interrupt sets the counter back to 0. Meanwhile, the
-main loop continually measures the signal, and incremements the counter when
-it sees a change from low to high. We've had to use `unsafe` to access
-`COUNTER`, as it's `static mut`, and that means we're promising the compiler
-we won't cause any undefined behaviour. Can you spot the race condition? The
-increment on `COUNTER` is _not_ guaranteed to be atomic — in fact, on most
-embedded platforms, it will be split into a load, then the increment, then
-a store. If the interrupt fired after the load but before the store, the
-reset back to 0 would be ignored after the interrupt returns — and we would
-count twice as many transitions for that period.
+매초 타이머 인터럽트는 카운터를 0으로 되돌립니다.
+그 사이 메인 루프는 신호를 계속 측정하며,
+low에서 high로 바뀌는 순간 카운터를 증가시킵니다.
+`COUNTER`가 `static mut`이므로 접근에 `unsafe`가 필요하며,
+이는 컴파일러에 "정의되지 않은 동작을 만들지 않겠다"고 약속하는 뜻입니다.
 
-## Critical Sections
+레이스 컨디션을 찾으셨나요?
+`COUNTER` 증가 연산은 원자적(atomic)이라고 보장되지 않습니다.
+대부분 플랫폼에서 로드(load) -> 증가 -> 저장(store)으로 나뉩니다.
+로드 후 저장 전에 인터럽트가 발생하면,
+인터럽트에서 0으로 초기화한 결과가 복귀 후 덮어써져 무시될 수 있습니다.
+결과적으로 해당 구간에서 전이 횟수를 실제보다 많이 세게 됩니다.
 
-So, what can we do about data races? A simple approach is to use _critical
-sections_, a context where interrupts are disabled. By wrapping the access to
-`COUNTER` in `main` in a critical section, we can be sure the timer interrupt
-will not fire until we're finished incrementing `COUNTER`:
+## 임계 구역(Critical Sections)
+
+데이터 레이스를 막으려면 어떻게 해야 할까요?
+간단한 방법은 인터럽트를 비활성화한 구간인
+*임계 구역*을 사용하는 것입니다.
+`main`에서 `COUNTER` 접근을 임계 구역으로 감싸면,
+카운터 증가가 끝날 때까지 타이머 인터럽트가 실행되지 않음을 보장할 수 있습니다.
 
 ```rust,ignore
 static mut COUNTER: u32 = 0;
@@ -124,39 +128,44 @@ fn timer() {
 }
 ```
 
-In this example, we use `cortex_m::interrupt::free`, but other platforms will
-have similar mechanisms for executing code in a critical section. This is also
-the same as disabling interrupts, running some code, and then re-enabling
-interrupts.
+이 예제에서는 `cortex_m::interrupt::free`를 사용했지만,
+다른 플랫폼에도 임계 구역 실행 메커니즘이 있습니다.
+개념적으로는 인터럽트를 끄고 코드를 실행한 뒤 다시 켜는 것과 같습니다.
 
-Note we didn't need to put a critical section inside the timer interrupt,
-for two reasons:
+타이머 인터럽트 안에는 임계 구역이 필요하지 않았는데,
+이유는 두 가지입니다.
 
-  * Writing 0 to `COUNTER` can't be affected by a race since we don't read it
-  * It will never be interrupted by the `main` thread anyway
+    * `COUNTER`에 0을 쓰는 연산은 읽기-수정-쓰기 형태가 아니므로 레이스 영향이 없습니다.
+    * 인터럽트 핸들러는 `main` 스레드에 의해 선점되지 않습니다.
 
-If `COUNTER` was being shared by multiple interrupt handlers that might
-_preempt_ each other, then each one might require a critical section as well.
+만약 `COUNTER`를 서로 선점 가능한 여러 인터럽트 핸들러가 공유한다면,
+각 핸들러에도 임계 구역이 필요할 수 있습니다.
 
-This solves our immediate problem, but we're still left writing a lot of unsafe code which we need to carefully reason about, and we might be using critical sections needlessly. Since each critical section temporarily pauses interrupt processing, there is an associated cost of some extra code size and higher interrupt latency and jitter (interrupts may take longer to be processed, and the time until they are processed will be more variable). Whether this is a problem depends on your system, but in general, we'd like to avoid it.
+이 방법은 당장의 문제를 해결하지만,
+여전히 주의 깊게 검토해야 하는 unsafe 코드가 남고,
+불필요하게 임계 구역을 사용할 수도 있습니다.
+임계 구역은 인터럽트 처리를 잠시 멈추므로
+코드 크기 증가, 인터럽트 지연(latency) 증가,
+지터(jitter) 증가 같은 비용이 따릅니다.
+시스템에 따라 문제가 될 수도 있고 아닐 수도 있지만,
+일반적으로는 최소화하는 편이 좋습니다.
 
-It's worth noting that while a critical section guarantees no interrupts will
-fire, it does not provide an exclusivity guarantee on multi-core systems!  The
-other core could be happily accessing the same memory as your core, even
-without interrupts. You will need stronger synchronisation primitives if you
-are using multiple cores.
+중요한 점은 임계 구역이 인터럽트 차단은 보장해도,
+멀티코어 시스템에서의 상호 배제를 보장하지는 않는다는 것입니다.
+다른 코어는 인터럽트 없이도 같은 메모리에 접근할 수 있습니다.
+멀티코어에서는 더 강한 동기화 프리미티브가 필요합니다.
 
-## Atomic Access
+## 원자적 접근(Atomic Access)
 
-On some platforms, special atomic instructions are available, which provide
-guarantees about read-modify-write operations. Specifically for Cortex-M: `thumbv6`
-(Cortex-M0, Cortex-M0+) only provide atomic load and store instructions,
-while `thumbv7` (Cortex-M3 and above) provide full Compare and Swap (CAS)
-instructions. These CAS instructions give an alternative to the heavy-handed
-disabling of all interrupts: we can attempt the increment, it will succeed most
-of the time, but if it was interrupted it will automatically retry the entire
-increment operation. These atomic operations are safe even across multiple
-cores.
+일부 플랫폼은 읽기-수정-쓰기 연산을 보장하는
+특수 원자 명령어를 제공합니다.
+Cortex-M 기준으로 `thumbv6`(Cortex-M0, M0+)는
+원자적 load/store만 제공하고,
+`thumbv7`(Cortex-M3 이상)는 전체 CAS(Compare and Swap)를 제공합니다.
+
+CAS는 "모든 인터럽트 비활성화"라는 강한 방법의 대안이 됩니다.
+증가 연산을 시도했다가 중간에 간섭이 있으면 자동으로 재시도할 수 있기 때문입니다.
+이 원자 연산은 멀티코어에서도 안전합니다.
 
 ```rust,ignore
 use core::sync::atomic::{AtomicUsize, Ordering};
@@ -184,34 +193,35 @@ fn timer() {
 }
 ```
 
-This time `COUNTER` is a safe `static` variable. Thanks to the `AtomicUsize`
-type `COUNTER` can be safely modified from both the interrupt handler and the
-main thread without disabling interrupts. When possible, this is a better
-solution — but it may not be supported on your platform.
+이번에는 `COUNTER`가 안전한 `static` 변수입니다.
+`AtomicUsize` 덕분에 인터럽트를 비활성화하지 않아도
+인터럽트 핸들러와 메인 스레드에서 모두 안전하게 수정할 수 있습니다.
+가능하다면 이 방식이 더 좋지만,
+플랫폼에 따라 지원되지 않을 수도 있습니다.
 
-A note on [`Ordering`]: this affects how the compiler and hardware may reorder
-instructions, and also has consequences on cache visibility. Assuming that the
-target is a single core platform `Relaxed` is sufficient and the most efficient
-choice in this particular case. Stricter ordering will cause the compiler to
-emit memory barriers around the atomic operations; depending on what you're
-using atomics for you may or may not need this! The precise details of the
-atomic model are complicated and best described elsewhere.
+[`Ordering`]에 대한 참고:
+이 값은 컴파일러/하드웨어의 명령 재정렬 방식과 캐시 가시성에 영향을 줍니다.
+단일 코어 플랫폼이라고 가정하면,
+이 경우 `Relaxed`가 충분하며 가장 효율적인 선택입니다.
+더 엄격한 ordering을 쓰면 컴파일러가 원자 연산 주변에 메모리 배리어를 삽입합니다.
+원자 연산을 어떤 목적으로 쓰느냐에 따라 필요할 수도, 아닐 수도 있습니다.
+원자 모델의 세부 사항은 복잡하므로 별도 자료를 참고하는 편이 좋습니다.
 
-For more details on atomics and ordering, see the [nomicon].
+원자 연산과 ordering의 자세한 내용은 [nomicon]을 참고하세요.
 
 [`Ordering`]: https://doc.rust-lang.org/core/sync/atomic/enum.Ordering.html
 [nomicon]: https://doc.rust-lang.org/nomicon/atomics.html
-
 
 ## Abstractions, Send, and Sync
 
 None of the above solutions are especially satisfactory. They require `unsafe`
 blocks which must be very carefully checked and are not ergonomic. Surely we
-can do better in Rust!
+Rust에서는 더 나은 방법이 있습니다.
 
-We can abstract our counter into a safe interface which can be safely used
-anywhere else in our code. For this example, we'll use the critical-section
-counter, but you could do something very similar with atomics.
+카운터를 안전한 인터페이스로 추상화하면,
+코드의 다른 위치에서 안전하게 재사용할 수 있습니다.
+이 예제에서는 임계 구역 기반 카운터를 사용하지만,
+원자 연산으로도 거의 동일한 방식의 추상화를 만들 수 있습니다.
 
 ```rust,ignore
 use core::cell::UnsafeCell;
@@ -272,71 +282,70 @@ fn timer() {
 }
 ```
 
-We've moved our `unsafe` code to inside our carefully-planned abstraction,
-and now our application code does not contain any `unsafe` blocks.
+`unsafe` 코드를 신중하게 설계한 추상화 내부로 옮겼고,
+애플리케이션 코드에서는 더 이상 `unsafe` 블록이 필요하지 않게 됐습니다.
 
-This design requires that the application pass a `CriticalSection` token in:
-these tokens are only safely generated by `interrupt::free`, so by requiring
-one be passed in, we ensure we are operating inside a critical section, without
-having to actually do the lock ourselves. This guarantee is provided statically
-by the compiler: there won't be any runtime overhead associated with `cs`.
-If we had multiple counters, they could all be given the same `cs`, without
-requiring multiple nested critical sections.
+이 설계는 애플리케이션이 `CriticalSection` 토큰을 넘기도록 강제합니다.
+이 토큰은 `interrupt::free`로만 안전하게 생성되므로,
+토큰 전달을 요구하는 것만으로 실제 잠금 코드를 직접 작성하지 않고도
+임계 구역 내부에서 동작함을 보장할 수 있습니다.
+이 보장은 컴파일러가 정적으로 제공하므로 `cs` 관련 런타임 오버헤드는 없습니다.
+카운터가 여러 개여도 같은 `cs`를 공유하면 되므로,
+중첩 임계 구역을 여러 번 만들 필요가 없습니다.
 
-This also brings up an important topic for concurrency in Rust: the
-[`Send` and `Sync`] traits. To summarise the Rust book, a type is Send
-when it can safely be moved to another thread, while it is Sync when
-it can be safely shared between multiple threads. In an embedded context,
-we consider interrupts to be executing in a separate thread to the application
-code, so variables accessed by both an interrupt and the main code must be
-Sync.
+여기서 Rust 동시성의 중요한 주제인 [`Send`와 `Sync`] trait가 등장합니다.
+요약하면 어떤 타입이 다른 스레드로 안전하게 이동 가능하면 Send,
+여러 스레드에서 안전하게 공유 가능하면 Sync입니다.
+임베디드에서는 인터럽트를 애플리케이션 코드와 별도 스레드처럼 간주하므로,
+인터럽트와 메인 코드가 함께 접근하는 변수는 Sync여야 합니다.
 
-[`Send` and `Sync`]: https://doc.rust-lang.org/nomicon/send-and-sync.html
+[`Send`와 `Sync`]: https://doc.rust-lang.org/nomicon/send-and-sync.html
 
-For most types in Rust, both of these traits are automatically derived for you
-by the compiler. However, because `CSCounter` contains an [`UnsafeCell`], it is
-not Sync, and therefore we could not make a `static CSCounter`: `static`
-variables _must_ be Sync, since they can be accessed by multiple threads.
+Rust의 대부분 타입은 이 trait들을 컴파일러가 자동으로 유도합니다.
+하지만 `CSCounter`는 [`UnsafeCell`]을 포함하므로 Sync가 아니며,
+따라서 `static CSCounter`를 바로 만들 수 없습니다.
+`static` 변수는 여러 스레드에서 접근될 수 있으므로 _반드시_ Sync여야 합니다.
 
 [`UnsafeCell`]: https://doc.rust-lang.org/core/cell/struct.UnsafeCell.html
 
-To tell the compiler we have taken care that the `CSCounter` is in fact safe
-to share between threads, we implement the Sync trait explicitly. As with the
-previous use of critical sections, this is only safe on single-core platforms:
-with multiple cores, you would need to go to greater lengths to ensure safety.
+`CSCounter`가 실제로 스레드 간 공유에 안전하다는 점을 컴파일러에 알리기 위해,
+Sync trait를 명시적으로 구현합니다.
+앞서 임계 구역을 사용할 때와 마찬가지로,
+이 방식은 단일 코어 플랫폼에서만 안전합니다.
+멀티코어라면 추가적인 안전 장치가 필요합니다.
 
-## Mutexes
+## 뮤텍스(Mutex)
 
-We've created a useful abstraction specific to our counter problem, but
-there are many common abstractions used for concurrency.
+카운터 문제에 특화된 유용한 추상화를 만들었지만,
+동시성에는 널리 쓰이는 공통 추상화가 더 있습니다.
 
-One such _synchronisation primitive_ is a mutex, short for mutual exclusion.
-These constructs ensure exclusive access to a variable, such as our counter. A
-thread can attempt to _lock_ (or _acquire_) the mutex, and either succeeds
-immediately, or blocks waiting for the lock to be acquired, or returns an error
-that the mutex could not be locked. While that thread holds the lock, it is
-granted access to the protected data. When the thread is done, it _unlocks_ (or
-_releases_) the mutex, allowing another thread to lock it. In Rust, we would
-usually implement the unlock using the [`Drop`] trait to ensure it is always
-released when the mutex goes out of scope.
+대표적인 *동기화 프리미티브*가 뮤텍스(mutual exclusion)입니다.
+뮤텍스는 카운터 같은 변수에 대한 배타적 접근을 보장합니다.
+스레드는 뮤텍스를 잠그기(lock/acquire) 시도하고,
+즉시 성공하거나, 잠금 해제를 기다리며 블록되거나,
+잠금을 얻지 못했다는 오류를 반환받습니다.
+잠금을 보유한 동안에는 보호된 데이터에 접근할 수 있고,
+작업이 끝나면 잠금을 해제(unlock/release)해 다른 스레드가 획득하게 합니다.
+Rust에서는 보통 [`Drop`] trait를 사용해 스코프 종료 시 잠금이 항상 해제되도록 구현합니다.
 
 [`Drop`]: https://doc.rust-lang.org/core/ops/trait.Drop.html
 
-Using a mutex with interrupt handlers can be tricky: it is not normally
-acceptable for the interrupt handler to block, and it would be especially
-disastrous for it to block waiting for the main thread to release a lock,
-since we would then _deadlock_ (the main thread will never release the lock
-because execution stays in the interrupt handler). Deadlocking is not
-considered unsafe: it is possible even in safe Rust.
+인터럽트 핸들러에서 뮤텍스를 쓰는 일은 까다롭습니다.
+인터럽트 핸들러가 블록되는 것은 일반적으로 허용되지 않으며,
+메인 스레드의 잠금 해제를 기다리며 블록되면 특히 치명적입니다.
+그 경우 *데드락*이 발생합니다.
+(실행이 인터럽트 핸들러에 묶여 메인 스레드가 잠금을 해제할 기회를 얻지 못함)
+데드락은 unsafe로 분류되지는 않지만,
+안전한 Rust에서도 충분히 발생할 수 있습니다.
 
-To avoid this behaviour entirely, we could implement a mutex which requires
-a critical section to lock, just like our counter example. So long as the
-critical section must last as long as the lock, we can be sure we have
-exclusive access to the wrapped variable without even needing to track
-the lock/unlock state of the mutex.
+이 문제를 피하려면,
+카운터 예제처럼 잠금을 위해 임계 구역을 요구하는 뮤텍스를 사용할 수 있습니다.
+잠금 유지 시간과 임계 구역 지속 시간이 같다면,
+뮤텍스의 lock/unlock 상태를 별도로 추적하지 않아도
+감싼 변수에 대한 배타 접근을 보장할 수 있습니다.
 
-This is in fact done for us in the `cortex_m` crate! We could have written
-our counter using it:
+실제로 `cortex_m` 크레이트가 이 방식을 제공합니다.
+카운터도 다음처럼 작성할 수 있습니다.
 
 ```rust,ignore
 use core::cell::Cell;
@@ -365,48 +374,48 @@ fn timer() {
 }
 ```
 
-We're now using [`Cell`], which along with its sibling `RefCell` is used to
-provide safe interior mutability. We've already seen `UnsafeCell` which is
-the bottom layer of interior mutability in Rust: it allows you to obtain
-multiple mutable references to its value, but only with unsafe code. A `Cell`
-is like an `UnsafeCell` but it provides a safe interface: it only permits
-taking a copy of the current value or replacing it, not taking a reference,
-and since it is not Sync, it cannot be shared between threads. These
-constraints mean it's safe to use, but we couldn't use it directly in a
-`static` variable as a `static` must be Sync.
+여기서는 [`Cell`]을 사용합니다.
+`Cell`과 `RefCell`은 안전한 내부 가변성을 제공하는 도구입니다.
+이미 본 `UnsafeCell`은 내부 가변성의 최하위 레이어로,
+unsafe 코드에서만 값에 대한 여러 가변 참조를 가능하게 합니다.
+`Cell`은 `UnsafeCell`과 유사하지만 안전한 인터페이스를 제공합니다.
+현재 값을 복사해 읽거나 통째로 교체만 허용하고 참조 자체는 내주지 않습니다.
+또한 Sync가 아니므로 스레드 간 공유도 불가능합니다.
+이 제약 덕분에 안전하지만, `static`은 Sync여야 하므로
+`Cell`을 단독으로 `static`에 둘 수는 없습니다.
 
 [`Cell`]: https://doc.rust-lang.org/core/cell/struct.Cell.html
 
-So why does the example above work? The `Mutex<T>` implements Sync for any
-`T` which is Send — such as a `Cell`. It can do this safely because it only
-gives access to its contents during a critical section. We're therefore able
-to get a safe counter with no unsafe code at all!
+그런데 위 예제가 동작하는 이유는 무엇일까요?
+`Mutex<T>`는 `T`가 Send이면(예: `Cell`) Sync를 구현할 수 있습니다.
+임계 구역 내부에서만 내용 접근을 허용하기 때문에 안전하게 가능합니다.
+결과적으로 unsafe 코드 없이도 안전한 카운터를 만들 수 있습니다.
 
-This is great for simple types like the `u32` of our counter, but what about
-more complex types which are not Copy? An extremely common example in an
-embedded context is a peripheral struct, which generally is not Copy.
-For that, we can turn to `RefCell`.
+이 방식은 카운터의 `u32` 같은 단순 타입에는 매우 좋습니다.
+그렇다면 Copy가 아닌 더 복잡한 타입은 어떨까요?
+임베디드에서 아주 흔한 예가 주변장치 구조체이며,
+보통 Copy가 아닙니다. 이런 경우 `RefCell`을 사용할 수 있습니다.
 
-## Sharing Peripherals
+## 주변장치 공유
 
-Device crates generated using `svd2rust` and similar abstractions provide
-safe access to peripherals by enforcing that only one instance of the
-peripheral struct can exist at a time. This ensures safety, but makes it
-difficult to access a peripheral from both the main thread and an interrupt
-handler.
+`svd2rust` 같은 도구로 생성된 디바이스 크레이트는
+주변장치 구조체 인스턴스가 동시에 하나만 존재하도록 강제해
+안전한 주변장치 접근을 제공합니다.
+이 방식은 안전하지만,
+메인 스레드와 인터럽트 핸들러에서 같은 주변장치를 함께 접근하기는 어렵게 만듭니다.
 
-To safely share peripheral access, we can use the `Mutex` we saw before. We'll
-also need to use [`RefCell`], which uses a runtime check to ensure only one
-reference to a peripheral is given out at a time. This has more overhead than
-the plain `Cell`, but since we are giving out references rather than copies,
-we must be sure only one exists at a time.
+주변장치 접근을 안전하게 공유하려면 앞서 본 `Mutex`를 사용할 수 있습니다.
+여기에 [`RefCell`]도 필요합니다.
+`RefCell`은 런타임 검사로 주변장치 참조가 한 번에 하나만 나가도록 보장합니다.
+단순 `Cell`보다 오버헤드는 크지만,
+복사본이 아니라 참조를 공유하는 상황에서는 필요한 비용입니다.
 
 [`RefCell`]: https://doc.rust-lang.org/core/cell/struct.RefCell.html
 
-Finally, we'll also have to account for somehow moving the peripheral into
-the shared variable after it has been initialised in the main code. To do
-this we can use the `Option` type, initialised to `None` and later set to
-the instance of the peripheral.
+마지막으로 메인 코드에서 초기화한 주변장치를
+공유 변수로 옮겨 넣는 과정도 필요합니다.
+이를 위해 처음에는 `None`으로 두고,
+나중에 실제 주변장치 인스턴스를 넣는 `Option`을 사용합니다.
 
 ```rust,ignore
 use core::cell::RefCell;
@@ -469,29 +478,26 @@ fn timer() {
 }
 ```
 
-That's quite a lot to take in, so let's break down the important lines.
+내용이 많으니 중요한 줄만 나눠서 보겠습니다.
 
 ```rust,ignore
 static MY_GPIO: Mutex<RefCell<Option<stm32f405::GPIOA>>> =
     Mutex::new(RefCell::new(None));
 ```
 
-Our shared variable is now a `Mutex` around a `RefCell` which contains an
-`Option`. The `Mutex` ensures we only have access during a critical section,
-and therefore makes the variable Sync, even though a plain `RefCell` would not
-be Sync. The `RefCell` gives us interior mutability with references, which
-we'll need to use our `GPIOA`. The `Option` lets us initialise this variable
-to something empty, and only later actually move the variable in. We cannot
-access the peripheral singleton statically, only at runtime, so this is
-required.
+공유 변수는 이제 `Option`을 담은 `RefCell`을 다시 `Mutex`로 감싼 형태입니다.
+`Mutex`는 임계 구역에서만 접근을 허용해 변수를 Sync로 만들어 줍니다.
+(`RefCell` 단독으로는 Sync가 아님)
+`RefCell`은 참조 기반 내부 가변성을 제공하고,
+`Option`은 초기엔 비워 두었다가 나중에 실제 값을 옮겨 넣을 수 있게 해 줍니다.
+주변장치 싱글턴은 정적으로 접근할 수 없고 런타임에만 획득되므로 이 단계가 필요합니다.
 
 ```rust,ignore
 interrupt::free(|cs| MY_GPIO.borrow(cs).replace(Some(dp.GPIOA)));
 ```
 
-Inside a critical section we can call `borrow()` on the mutex, which gives us
-a reference to the `RefCell`. We then call `replace()` to move our new value
-into the `RefCell`.
+임계 구역 안에서 뮤텍스의 `borrow()`를 호출하면 `RefCell` 참조를 얻고,
+`replace()`로 새 값을 `RefCell` 안으로 이동시킬 수 있습니다.
 
 ```rust,ignore
 interrupt::free(|cs| {
@@ -500,18 +506,18 @@ interrupt::free(|cs| {
 });
 ```
 
-Finally, we use `MY_GPIO` in a safe and concurrent fashion. The critical section
-prevents the interrupt firing as usual, and lets us borrow the mutex.  The
-`RefCell` then gives us an `&Option<GPIOA>`, and tracks how long it remains
-borrowed - once that reference goes out of scope, the `RefCell` will be updated
-to indicate it is no longer borrowed.
+마지막으로 `MY_GPIO`를 안전하고 동시성 친화적으로 사용합니다.
+임계 구역은 인터럽트 개입을 막고 뮤텍스를 빌릴 수 있게 해 줍니다.
+이후 `RefCell`이 `&Option<GPIOA>`를 제공하며,
+참조가 스코프를 벗어날 때까지 빌림 상태를 추적합니다.
+스코프를 벗어나면 더 이상 빌려진 상태가 아님을 반영합니다.
 
-Since we can't move the `GPIOA` out of the `&Option`, we need to convert it to
-an `&Option<&GPIOA>` with `as_ref()`, which we can finally `unwrap()` to obtain
-the `&GPIOA` which lets us modify the peripheral.
+`&Option`에서 `GPIOA`를 직접 이동시킬 수는 없으므로,
+`as_ref()`로 `&Option<&GPIOA>`로 바꾼 뒤 `unwrap()`하여
+주변장치를 조작할 수 있는 `&GPIOA`를 얻습니다.
 
-If we need a mutable reference to a shared resource, then `borrow_mut` and `deref_mut`
-should be used instead. The following code shows an example using the TIM2 timer.
+공유 자원에 가변 참조가 필요하다면 `borrow_mut`와 `deref_mut`를 사용해야 합니다.
+다음 코드는 TIM2 타이머 예제입니다.
 
 ```rust,ignore
 use core::cell::RefCell;
@@ -553,55 +559,56 @@ fn timer() {
 
 ```
 
-Whew! This is safe, but it is also a little unwieldy. Is there anything else
-we can do?
+휴, 안전하긴 하지만 코드가 조금 번거롭습니다.
+더 나은 방법이 있을까요?
 
 ## RTIC
 
-One alternative is the [RTIC framework], short for Real Time Interrupt-driven Concurrency. It
-enforces static priorities and tracks accesses to `static mut` variables
-("resources") to statically ensure that shared resources are always accessed
-safely, without requiring the overhead of always entering critical sections and
-using reference counting (as in `RefCell`). This has a number of advantages such
-as guaranteeing no deadlocks and giving extremely low time and memory overhead.
+대안 중 하나는 Real Time Interrupt-driven Concurrency의 약자인 [RTIC framework]입니다.
+RTIC는 정적 우선순위를 강제하고 `static mut` 변수("리소스") 접근을 추적해,
+공유 자원이 항상 안전하게 접근되도록 정적으로 보장합니다.
+항상 임계 구역에 들어가거나(`RefCell`처럼) 참조 카운팅을 쓰는 오버헤드가 필요 없고,
+데드락 부재 보장, 매우 낮은 시간/메모리 오버헤드 같은 장점이 있습니다.
 
 [RTIC framework]: https://github.com/rtic-rs/cortex-m-rtic
 
-The framework also includes other features like message passing, which reduces
-the need for explicit shared state, and the ability to schedule tasks to run at
-a given time, which can be used to implement periodic tasks. Check out [the
-documentation] for more information!
+이 프레임워크는 메시지 패싱 같은 기능도 제공해
+명시적 공유 상태 필요성을 줄여 줍니다.
+또한 특정 시점에 태스크를 스케줄링할 수 있어
+주기적 태스크 구현에도 활용할 수 있습니다.
+자세한 내용은 [the documentation]을 참고하세요.
 
 [the documentation]: https://rtic.rs
 
-## Real Time Operating Systems
+## 실시간 운영체제(RTOS)
 
-Another common model for embedded concurrency is the real-time operating system
-(RTOS). While currently less well explored in Rust, they are widely used in
-traditional embedded development. Open source examples include [FreeRTOS] and
-[ChibiOS]. These RTOSs provide support for running multiple application threads
-which the CPU swaps between, either when the threads yield control (called
-cooperative multitasking) or based on a regular timer or interrupts (preemptive
-multitasking). The RTOS typically provide mutexes and other synchronisation
-primitives, and often interoperate with hardware features such as DMA engines.
+임베디드 동시성의 또 다른 대표 모델은 RTOS(실시간 운영체제)입니다.
+Rust에서의 사례는 아직 상대적으로 적지만,
+전통적인 임베디드 개발에서는 널리 사용됩니다.
+오픈소스 예로 [FreeRTOS], [ChibiOS]가 있습니다.
+이 RTOS들은 여러 애플리케이션 스레드 실행을 지원하며,
+스레드가 자발적으로 제어권을 넘기거나(협력형 멀티태스킹),
+주기 타이머/인터럽트 기반으로(선점형 멀티태스킹) CPU가 스레드를 전환합니다.
+보통 뮤텍스와 기타 동기화 프리미티브를 제공하고,
+DMA 엔진 같은 하드웨어 기능과도 함께 동작합니다.
 
 [FreeRTOS]: https://freertos.org/
 [ChibiOS]: http://chibios.org/
 
-At the time of writing, there are not many Rust RTOS examples to point to,
-but it's an interesting area so watch this space!
+작성 시점 기준으로 Rust RTOS 예제는 많지 않지만,
+흥미로운 영역이므로 앞으로 발전을 지켜볼 만합니다.
 
-## Multiple Cores
+## 멀티코어
 
-It is becoming more common to have two or more cores in embedded processors,
-which adds an extra layer of complexity to concurrency. All the examples using
-a critical section (including the `cortex_m::interrupt::Mutex`) assume the only
-other execution thread is the interrupt thread, but on a multi-core system
-that's no longer true. Instead, we'll need synchronisation primitives designed
-for multiple cores (also called SMP, for symmetric multi-processing).
+임베디드 프로세서에서 2개 이상 코어를 갖는 경우가 점점 늘고 있으며,
+이는 동시성 복잡도를 한 단계 더 높입니다.
+임계 구역을 사용하는 예제(`cortex_m::interrupt::Mutex` 포함)는
+다른 실행 주체가 인터럽트 스레드뿐이라고 가정하지만,
+멀티코어에서는 더 이상 성립하지 않습니다.
+대신 멀티코어용 동기화 프리미티브(SMP, symmetric multi-processing)가 필요합니다.
 
-These typically use the atomic instructions we saw earlier, since the
-processing system will ensure that atomicity is maintained over all cores.
+이 경우 보통 앞서 본 원자 명령어를 사용하며,
+처리 시스템이 모든 코어에 대해 원자성을 유지해 줍니다.
 
-Covering these topics in detail is currently beyond the scope of this book,
-but the general patterns are the same as for the single-core case.
+이 주제를 자세히 다루는 것은 현재 이 책 범위를 벗어나지만,
+큰 패턴 자체는 단일 코어 경우와 유사합니다.

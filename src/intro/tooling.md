@@ -1,116 +1,138 @@
-# Tooling
+# 도구 체인
 
-Dealing with microcontrollers involves using several different tools as we'll be
-dealing with an architecture different than your laptop's and we'll have to run
-and debug programs on a *remote* device.
+마이크로컨트롤러를 다루려면 여러 도구를 함께 사용해야 합니다. 우리가 다루는 대상은
+노트북과 다른 아키텍처를 사용하고, 프로그램 실행과 디버깅도 원격 장치에서 이뤄지기
+때문입니다.
 
-We'll use all the tools listed below. Any recent version should work when a
-minimum version is not specified, but we have listed the versions we have
-tested.
+이 책에서는 아래 도구를 사용합니다. 최소 버전을 명시하지 않은 경우에는 최신 버전이면
+대체로 동작하지만, 여기에는 우리가 테스트한 버전을 함께 적어 두었습니다.
 
-- Rust 1.31, 1.31-beta, or a newer toolchain PLUS ARM Cortex-M compilation
-  support.
+- Rust 1.31, 1.31-beta 또는 그 이후의 툴체인 + ARM Cortex-M 크로스 컴파일 지원
 - [`cargo-binutils`](https://github.com/rust-embedded/cargo-binutils) ~0.1.4
-- [`qemu-system-arm`](https://www.qemu.org/). Tested versions: 3.0.0
-- OpenOCD >=0.8. Tested versions: v0.9.0 and v0.10.0
-- GDB with ARM support. Version 7.12 or newer highly recommended. Tested
-  versions: 7.10, 7.11, 7.12 and 8.1
-- [`cargo-generate`](https://github.com/ashleygwilliams/cargo-generate) or `git`.
-  These tools are optional but will make it easier to follow along with the book.
+- [`qemu-system-arm`](https://www.qemu.org/). 테스트한 버전: 3.0.0
+- OpenOCD >=0.8. 테스트한 버전: v0.9.0, v0.10.0
+- ARM 지원 GDB. 7.12 이상을 강력히 권장. 테스트한 버전: 7.10, 7.11, 7.12, 8.1
+- [`cargo-generate`](https://github.com/ashleygwilliams/cargo-generate) 또는 `git`.
+  이 도구들은 선택 사항이지만 책을 따라가는 데 큰 도움이 됩니다.
 
-The text below explains why we are using these tools. Installation instructions
-can be found on the next page.
+아래에서는 왜 이 도구들을 사용하는지 설명합니다. 설치 방법은 다음 페이지에서 다룹니다.
 
-## `cargo-generate` OR `git`
+## `cargo-generate` 또는 `git`
 
-Bare metal programs are non-standard (`no_std`) Rust programs that require some
-adjustments to the linking process in order to get the memory layout of the program
-right. This requires some additional files (like linker scripts) and 
-settings (like linker flags). We have packaged those for you in a template
-such that you only need to fill in the missing information (such as the project name and the
-characteristics of your target hardware).
+베어메탈 프로그램은 비표준(`no_std`) Rust 프로그램이므로, 프로그램의 메모리 레이아웃을
+올바르게 맞추려면 링크 과정에 약간의 조정이 필요합니다. 이를 위해 추가 파일(예: 링커 스크립트)과
+설정(예: 링커 플래그)이 필요합니다. 우리는 이런 요소를 템플릿에 미리 패키징해 두었기 때문에,
+프로젝트 이름이나 타깃 하드웨어의 특성 같은 빠진 정보만 채우면 됩니다.
 
-Our template is compatible with `cargo-generate`: a Cargo subcommand for
-creating new Cargo projects from templates. You can also download the
-template using `git`, `curl`, `wget`, or your web browser.
+이 템플릿은 `cargo-generate`와 호환됩니다. `cargo-generate`는 템플릿으로부터 새로운 Cargo
+프로젝트를 생성하는 Cargo 서브커맨드입니다. 물론 `git`, `curl`, `wget`, 웹 브라우저를 사용해
+템플릿을 직접 내려받아도 됩니다.
 
 ## `cargo-binutils`
 
-`cargo-binutils` is a collection of Cargo subcommands that make it easy to use
-the LLVM tools that are shipped with the Rust toolchain. These tools include the
-LLVM versions of `objdump`, `nm` and `size` and are used for inspecting
-binaries.
+`cargo-binutils`는 Rust 툴체인에 함께 제공되는 LLVM 도구를 쉽게 사용할 수 있게 해 주는
+Cargo 서브커맨드 모음입니다. 여기에는 `objdump`, `nm`, `size`의 LLVM 버전이 포함되며,
+바이너리 분석에 사용됩니다.
 
-The advantage of using these tools over GNU binutils is that (a) installing the
-LLVM tools is the same one-command installation (`rustup component add
-llvm-tools`) regardless of your OS and (b) tools like `objdump` support
-all the architectures that `rustc` supports -- from ARM to x86_64 -- because
-they both share the same LLVM backend.
+GNU binutils 대신 이 도구를 쓰는 장점은 두 가지입니다. 첫째, LLVM 도구 설치 방법이 OS와 관계없이
+`rustup component add llvm-tools`라는 한 줄 명령으로 동일합니다. 둘째, `objdump` 같은 도구는
+`rustc`가 지원하는 모든 아키텍처를 지원합니다. ARM부터 x86_64까지 모두 같은 LLVM 백엔드를
+공유하기 때문입니다.
 
 ## `qemu-system-arm`
 
-QEMU is an emulator. In this case we use the variant that can fully emulate ARM
-systems. We use QEMU to run embedded programs on the host. Thanks to this you
-can follow some parts of this book even if you don't have any hardware with you!
+QEMU는 에뮬레이터입니다. 여기서는 ARM 시스템을 완전히 에뮬레이션할 수 있는 변형을 사용합니다.
+QEMU를 사용하면 호스트에서 임베디드 프로그램을 실행할 수 있으므로, 실제 하드웨어가 없어도
+책의 일부를 충분히 따라갈 수 있습니다.
 
-# Tooling for Embedded Rust Debugging
+# 임베디드 Rust 디버깅 도구
 
-## Overview
+## 개요
 
-Debugging embedded systems in Rust requires specialized tools including software to manage the debugging process, debuggers to inspect and control program execution, and hardware probes to facilitate interaction between the host and the embedded device. This document outlines essential software tools like Probe-rs and OpenOCD, which simplify and support the debugging process, alongside prominent debuggers such as GDB and the Probe-rs Visual Studio Code extension. Additionally, it covers key hardware probes such as Rusty-probe, ST-Link, J-Link, and MCU-Link, which are integral for effective debugging and programming of embedded devices.
+Rust로 임베디드 시스템을 디버깅하려면 특수한 도구가 필요합니다. 디버깅 과정을 제어하는 소프트웨어,
+프로그램 실행을 관찰하고 제어하는 디버거, 그리고 호스트와 임베디드 장치 간 상호작용을 돕는 하드웨어
+프로브가 모두 필요합니다. 이 문서에서는 Probe-rs, OpenOCD 같은 핵심 소프트웨어와 GDB,
+Probe-rs Visual Studio Code 확장 같은 디버거를 설명합니다. 또한 Rusty-probe, ST-Link,
+J-Link, MCU-Link 같은 대표적인 하드웨어 프로브도 소개합니다.
 
-## Software that drives debugging tools
+## 디버깅 도구를 구동하는 소프트웨어
 
 ### Probe-rs
 
-Probe-rs is a modern, Rust-focused software designed to work with debuggers in embedded systems. Unlike OpenOCD, Probe-rs is built with simplicity in mind and aims to reduce the configuration burden often found in other debugging solutions. It supports various probes and targets, providing a high-level interface for interacting with embedded hardware. Probe-rs integrates directly with Rust tooling, and integrates with Visual Studio Code through its extension, allowing developers to streamline their debugging workflow.
-
+Probe-rs는 임베디드 시스템 디버깅을 위해 설계된 현대적인 Rust 중심 소프트웨어입니다.
+OpenOCD와 달리 단순성을 중요하게 설계되어, 다른 디버깅 솔루션에서 자주 마주치는 복잡한 설정 부담을
+줄이려는 목표를 가지고 있습니다. 다양한 프로브와 타깃을 지원하며, 임베디드 하드웨어와 상호작용할 수 있는
+고수준 인터페이스를 제공합니다. Rust 도구 체인과 직접 통합되고 Visual Studio Code 확장과도 연계되어
+디버깅 워크플로를 단순화할 수 있습니다.
 
 ### OpenOCD (Open On-Chip Debugger)
 
-OpenOCD is an open-source software tool used for debugging, testing, and programming embedded systems. It provides an interface between the host system and embedded hardware, supporting various transport layers like JTAG and SWD (Serial Wire Debug). OpenOCD integrates with GDB, which is a debugger. OpenOCD is widely supported, with extensive documentation and a large community, but may require complex configuration, especially for custom embedded setups.
+OpenOCD는 임베디드 시스템의 디버깅, 테스트, 프로그래밍에 사용되는 오픈소스 소프트웨어입니다.
+JTAG, SWD(Serial Wire Debug) 같은 전송 계층을 지원하며, 호스트 시스템과 임베디드 하드웨어 사이의
+인터페이스 역할을 합니다. OpenOCD는 디버거인 GDB와 함께 동작합니다. 널리 지원되고 문서와 사용자층이
+풍부하지만, 특히 커스텀 보드에서는 설정이 복잡할 수 있습니다.
 
-## Debuggers
+## 디버거
 
-A debugger allows developers to inspect and control the execution of a program in order to identify and correct errors or bugs. It provides functionalities such as setting breakpoints, stepping through code line by line, and examining the values of variables and memory states. Debuggers are essential for thorough software development and maintenance, enabling developers to ensure that their code behaves as intended under various conditions.
+디버거는 프로그램 실행을 관찰하고 제어하여 오류나 버그를 찾아 수정할 수 있게 해 주는 도구입니다.
+브레이크포인트 설정, 한 줄씩 실행, 변수 값 및 메모리 상태 확인 같은 기능을 제공합니다.
+디버거는 코드가 다양한 상황에서 의도대로 동작하는지 검증하는 데 필수적입니다.
 
-Debuggers know how to:
- * Interact with the memory mapped registers. 
- * Set Breakpoints/Watchpoints.
- * Read and write to the memory mapped registers.
- * Detect when the MCU has been halted for a debug event.
- * Continue MCU execution after a debug event has been encountered.
- * Erase and write to the microcontroller's FLASH.
+디버거는 다음과 같은 일을 할 수 있어야 합니다.
 
-### Probe-rs Visual Studio Code Extension
+- 메모리 매핑 레지스터와 상호작용
+- Breakpoint/Watchpoint 설정
+- 메모리 매핑 레지스터 읽기/쓰기
+- 디버그 이벤트로 MCU가 정지했는지 감지
+- 디버그 이벤트 이후 MCU 실행 재개
+- 마이크로컨트롤러의 플래시 지우기 및 쓰기
 
-Probe-rs has a Visual Studio Code extension, providing a seamless debugging experience without extensive setup. Through this connection, developers can use Rust-specific features like pretty printing and detailed error messages, ensuring that their debugging process aligns with the Rust ecosystem. 
+### Probe-rs Visual Studio Code 확장
+
+Probe-rs는 광범위한 설정 없이도 부드러운 디버깅 경험을 제공하는 Visual Studio Code 확장을 제공합니다.
+이 연결을 통해 Rust 전용 pretty printing이나 자세한 오류 메시지 등 Rust 친화적인 기능을 활용할 수 있어,
+디버깅 경험을 Rust 생태계와 자연스럽게 맞출 수 있습니다.
 
 ### TRACE32
 
-TRACE32 is a professional debugging and tracing solution developed by Lauterbach for embedded systems. It supports a wide range of processor architectures, including ARM and RISC-V, and connects to target hardware via JTAG, SWD, and various trace interfaces. TRACE32 provides advanced debugging capabilities such as multicore debugging, complex breakpoints, and real-time trace analysis. It works with standard ELF/DWARF debug information, making it compatible with Rust binaries built using conventional toolchains.
+TRACE32는 Lauterbach가 개발한 상용 디버깅/트레이싱 솔루션입니다. ARM, RISC-V 등 다양한 프로세서
+아키텍처를 지원하며, JTAG, SWD, 여러 trace 인터페이스를 통해 타깃 하드웨어와 연결합니다.
+멀티코어 디버깅, 복잡한 브레이크포인트, 실시간 trace 분석 같은 고급 기능을 제공하며, 표준 ELF/DWARF
+디버그 정보를 사용하므로 일반적인 Rust 툴체인으로 빌드한 바이너리와도 호환됩니다.
 
-### GDB (GNU Debugger) 
+### GDB (GNU Debugger)
 
-GDB is a versatile debugging tool that allows developers to examine the state of programs while they run or after they crash. For embedded Rust, GDB connects to the target system via OpenOCD or other debugging servers to interact with the embedded code. GDB is highly configurable and supports features like remote debugging, variable inspection, and conditional breakpoints. It can be used on a variety of platforms, and has extensive support for Rust-specific debugging needs, such as pretty printing and integration with IDEs.
+GDB는 프로그램이 실행 중이거나 충돌한 뒤의 상태를 살펴볼 수 있는 범용 디버깅 도구입니다.
+임베디드 Rust에서는 OpenOCD나 다른 디버그 서버를 통해 타깃 시스템에 접속합니다. 원격 디버깅,
+변수 검사, 조건부 브레이크포인트 같은 기능을 지원하며 여러 플랫폼에서 사용할 수 있습니다.
+Rust 전용 pretty printing이나 IDE 연동 등도 폭넓게 지원합니다.
 
+## 프로브
 
-## Probes
-
-A hardware probe is a device used in the development and debugging of embedded systems to facilitate communication between a host computer and the target embedded device. It typically supports protocols like JTAG or SWD, enabling it to program, debug, and analyze the microcontroller or microprocessor on the embedded system. Hardware probes are crucial for developers to set breakpoints, step through code, and inspect memory and processor registers, effectively allowing them to diagnose and fix issues in real-time.
+하드웨어 프로브는 호스트 컴퓨터와 타깃 임베디드 장치 간 통신을 가능하게 하는 장치입니다.
+보통 JTAG이나 SWD 같은 프로토콜을 지원하여 마이크로컨트롤러나 마이크로프로세서를 프로그래밍하고,
+디버깅하고, 분석할 수 있게 해 줍니다. 브레이크포인트 설정, 스텝 실행, 메모리와 레지스터 확인을 가능하게 해,
+실시간으로 문제를 진단하고 수정하는 데 핵심적인 역할을 합니다.
 
 ### Rusty-probe
 
-Rusty-probe is an open-sourced USB-based hardware debugging probe designed to work with probe-rs. The combination of Rusty-Probe and probe-rs provides an easy-to-use, cost-effective solution for developers working with embedded Rust applications.
+Rusty-probe는 probe-rs와 함께 사용할 수 있도록 설계된 오픈소스 USB 기반 하드웨어 디버깅 프로브입니다.
+Rusty-probe와 probe-rs의 조합은 임베디드 Rust 애플리케이션 개발자에게 간단하고 비용 효율적인 솔루션을 제공합니다.
 
 ### ST-Link
 
-The ST-Link is a popular debugging and programming probe developed by STMicroelectronics primarily for their STM32 and STM8 microcontroller series. It supports both debugging and programming via JTAG or SWD (Serial Wire Debug) interfaces. ST-Link is widely used due to its direct support from STMicroelectronics' extensive range of development boards and its integration into major IDEs, making it a convenient choice for developers working with STM microcontrollers.
+ST-Link는 STMicroelectronics가 STM32, STM8 계열을 위해 제공하는 대표적인 디버깅/프로그래밍 프로브입니다.
+JTAG과 SWD를 통한 디버깅과 프로그래밍을 모두 지원합니다. ST의 다양한 개발 보드에 직접 통합되어 있고,
+주요 IDE와도 잘 연동되기 때문에 STM 마이크로컨트롤러 개발자에게 매우 편리한 선택지입니다.
 
 ### J-Link
 
-J-Link, developed by SEGGER Microcontroller, is a robust and versatile debugger supporting a wide range of CPU cores and devices beyond just ARM, such as RISC-V. Known for its high performance and reliability, J-Link supports various communication interfaces, including JTAG, SWD, and fine-pitch JTAG interfaces. It is favored for its advanced features like unlimited breakpoints in flash memory and its compatibility with a multitude of development environments.
+J-Link는 SEGGER가 개발한 고성능 범용 디버거로, ARM뿐 아니라 RISC-V를 포함한 다양한 CPU 코어와 장치를 지원합니다.
+JTAG, SWD, fine-pitch JTAG 등 여러 통신 인터페이스를 지원하며, 플래시 메모리에서의 무제한 브레이크포인트 같은
+고급 기능과 폭넓은 개발 환경 호환성으로 잘 알려져 있습니다.
 
 ### MCU-Link
 
-MCU-Link is a debugging probe that also functions as a programmer, provided by NXP Semiconductors. It supports a variety of ARM Cortex microcontrollers and interfaces seamlessly with development tools like MCUXpresso IDE. MCU-Link is particularly notable for its versatility and affordability, making it an accessible option for hobbyists, educators, and professional developers alike.
+MCU-Link는 NXP Semiconductors가 제공하는 디버깅 프로브이자 프로그래머입니다.
+다양한 ARM Cortex 마이크로컨트롤러를 지원하며 MCUXpresso IDE 같은 개발 도구와 자연스럽게 연동됩니다.
+다용도성과 가격 경쟁력이 좋아 취미 개발자, 교육 현장, 전문가 모두에게 접근성이 높은 선택지입니다.

@@ -1,3 +1,3 @@
-# Design Patterns
+# 디자인 패턴
 
-This chapter aims to collect various useful design patterns for embedded Rust.
+이 장에서는 임베디드 Rust에서 유용하게 사용할 수 있는 다양한 디자인 패턴을 다룹니다.

@@ -1,23 +1,24 @@
-# Static Guarantees
+# 정적 보장
 
-Rust's type system prevents data races at compile time (see [`Send`] and
-[`Sync`] traits). The type system can also be used to check other properties at
-compile time; reducing the need for runtime checks in some cases.
+Rust의 타입 시스템은 컴파일 타임에 데이터 레이스를 방지합니다.
+([`Send`], [`Sync`] trait 참고)
+또한 타입 시스템으로 다른 성질도 컴파일 타임에 검사할 수 있어,
+경우에 따라 런타임 검사의 필요성을 줄일 수 있습니다.
 
 [`Send`]: https://doc.rust-lang.org/core/marker/trait.Send.html
 [`Sync`]: https://doc.rust-lang.org/core/marker/trait.Sync.html
 
-When applied to embedded programs these *static checks* can be used, for
-example, to enforce that configuration of I/O interfaces is done properly. For
-instance, one can design an API where it is only possible to initialize a serial
-interface by first configuring the pins that will be used by the interface.
+임베디드 프로그램에 적용하면,
+이런 *정적 검사*를 통해 I/O 인터페이스 설정이 올바르게 이루어지도록 강제할 수 있습니다.
+예를 들어 시리얼 인터페이스에서 사용할 핀을 먼저 설정해야만
+인터페이스 초기화가 가능하도록 API를 설계할 수 있습니다.
 
-One can also statically check that operations, like setting a pin low, can only
-be performed on correctly configured peripherals. For example, trying to change
-the output state of a pin configured in floating input mode would raise a
-compile error.
+핀을 low로 설정하는 연산 같은 것도
+올바르게 구성된 주변장치에서만 수행되도록 정적으로 검사할 수 있습니다.
+예를 들어 floating input 모드로 설정된 핀의 출력 상태를 바꾸려 하면
+컴파일 오류가 발생하도록 만들 수 있습니다.
 
-And, as seen in the previous chapter, the concept of ownership can be applied
-to peripherals to ensure that only certain parts of a program can modify a
-peripheral. This *access control* makes software easier to reason about
-compared to the alternative of treating peripherals as global mutable state.
+또한 앞 장에서 봤듯 소유권 개념을 주변장치에 적용하면,
+프로그램의 특정 부분만 주변장치를 수정하도록 강제할 수 있습니다.
+이런 *접근 제어*는 주변장치를 전역 가변 상태로 다루는 방식보다
+소프트웨어를 더 쉽게 추론할 수 있게 해 줍니다.

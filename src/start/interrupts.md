@@ -1,35 +1,34 @@
-# Interrupts
+# 인터럽트
 
-Interrupts differ from exceptions in a variety of ways but their operation and
-use is largely similar and they are also handled by the same interrupt
-controller. Whereas exceptions are defined by the Cortex-M architecture,
-interrupts are always vendor (and often even chip) specific implementations,
-both in naming and functionality.
+인터럽트는 예외와 여러 면에서 다르지만, 동작 방식과 사용법은 대체로 비슷하며
+같은 인터럽트 컨트롤러가 처리합니다. 예외가 Cortex-M 아키텍처에 의해 정의되는 반면,
+인터럽트는 이름과 기능 모두에서 항상 벤더 고유 구현이며,
+심지어 같은 벤더 안에서도 칩마다 달라질 수 있습니다.
 
-Interrupts do allow for a lot of flexibility which needs to be accounted for
-when attempting to use them in an advanced way. We will not cover those uses in
-this book, however it is a good idea to keep the following in mind:
+인터럽트는 매우 유연하지만, 고급 방식으로 사용하려면 그만큼 고려해야 할 요소도 많습니다.
+이 책에서는 그런 고급 활용을 다루지 않지만, 다음 사항은 기억해 두는 것이 좋습니다.
 
-* Interrupts have programmable priorities which determine their handlers' execution order
-* Interrupts can nest and preempt, i.e. execution of an interrupt handler might be interrupted by another higher-priority interrupt
-* In general the reason causing the interrupt to trigger needs to be cleared to prevent re-entering the interrupt handler endlessly
+- 인터럽트에는 프로그래머블 우선순위가 있어, 핸들러 실행 순서를 결정합니다.
+- 인터럽트는 중첩될 수 있고 서로 선점할 수 있습니다. 즉, 한 인터럽트 핸들러 실행 중 더 높은 우선순위의 인터럽트가 끼어들 수 있습니다.
+- 일반적으로 인터럽트가 발생한 원인을 반드시 해제(clear)해야, 핸들러에 무한 재진입하는 상황을 막을 수 있습니다.
 
-The general initialization steps at runtime are always the same:
-* Setup the peripheral(s) to generate interrupts requests at the desired occasions
-* Set the desired priority of the interrupt handler in the interrupt controller
-* Enable the interrupt handler in the interrupt controller
+런타임에서의 일반적인 초기화 단계는 항상 비슷합니다.
 
-Similarly to exceptions, the cortex-m-rt crate exposes an [`interrupt`] attribute for declaring interrupt handlers. However, this 
-attribute is only available when the device feature is enabled. That said, this attribute is not intended to be used directly—doing 
-so will result in a compilation error.
+- 원하는 시점에 인터럽트 요청을 발생시키도록 주변장치를 설정합니다.
+- 인터럽트 컨트롤러에서 해당 인터럽트 핸들러의 우선순위를 설정합니다.
+- 인터럽트 컨트롤러에서 해당 인터럽트 핸들러를 활성화합니다.
 
-Instead, you should use the re-exported version of the interrupt attribute provided by the device crate (usually generated using svd2rust). 
-This ensures that the compiler can verify that the interrupt actually exists on the target device. The list of available interrupts—and 
-their position in the interrupt vector table—is typically auto-generated from an SVD file by svd2rust.
+예외와 비슷하게, `cortex-m-rt` crate는 인터럽트 핸들러를 선언하기 위한 [`interrupt`] 속성도 제공합니다.
+하지만 이 속성은 device feature가 활성화된 경우에만 사용할 수 있습니다.
+또한 이 속성은 직접 사용하는 용도가 아니며, 직접 사용하면 컴파일 오류가 납니다.
+
+대신 device crate(보통 svd2rust로 생성됨)가 재내보내는 interrupt 속성을 사용해야 합니다.
+그래야 컴파일러가 해당 인터럽트가 실제로 타깃 장치에 존재하는지 검증할 수 있습니다.
+사용 가능한 인터럽트 목록과 인터럽트 벡터 테이블에서의 위치는 일반적으로 svd2rust가 SVD 파일로부터 자동 생성합니다.
 
 [`interrupt`]: https://docs.rs/cortex-m-rt-macros/0.1.5/cortex_m_rt_macros/attr.interrupt.html
 
-``` rust,ignore
+```rust,ignore
 use lm3s6965::interrupt; // Re-exported attribute from the device crate
 
 // Interrupt handler for the Timer2 interrupt
@@ -40,16 +39,14 @@ fn TIMER2A() {
 }
 ```
 
-Interrupt handlers look like plain functions (except for the lack of arguments)
-similar to exception handlers. However they can not be called directly by other
-parts of the firmware due to the special calling conventions. It is however
-possible to generate interrupt requests in software to trigger a diversion to
-the interrupt handler.
+인터럽트 핸들러는 인자가 없다는 점을 제외하면 예외 핸들러처럼 일반 함수와 비슷해 보입니다.
+하지만 특별한 호출 규약 때문에 펌웨어의 다른 부분에서 직접 호출할 수는 없습니다.
+대신 소프트웨어적으로 인터럽트 요청을 발생시켜 인터럽트 핸들러로 흐름을 전환시키는 것은 가능합니다.
 
-Similar to exception handlers it is also possible to declare `static mut`
-variables inside the interrupt handlers for *safe* state keeping.
+예외 핸들러와 마찬가지로, 인터럽트 핸들러 내부에도 상태 보관을 위해 `static mut`
+변수를 선언하고 _안전하게_ 사용할 수 있습니다.
 
-``` rust,ignore
+```rust,ignore
 #[interrupt]
 fn TIMER2A() {
     static mut COUNT: u32 = 0;
@@ -59,7 +56,6 @@ fn TIMER2A() {
 }
 ```
 
-For a more detailed description about the mechanisms demonstrated here please
-refer to the [exceptions section].
+여기서 보여 준 메커니즘을 더 자세히 알고 싶다면 [예외 섹션]을 참고하세요.
 
-[exceptions section]: ./exceptions.md
+[예외 섹션]: ./exceptions.md

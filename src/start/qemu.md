@@ -19,16 +19,20 @@ We'll use the [`cortex-m-quickstart`] project template to generate a new
 project from it. The created project will contain a barebone application: a good
 starting point for a new embedded rust application. In addition, the project will
 contain an `examples` directory, with several separate applications, highlighting
-some of the key embedded rust functionality. 
+some of the key embedded rust functionality.
 
 [`cortex-m-quickstart`]: https://github.com/rust-embedded/cortex-m-quickstart
 
 ### Using `cargo-generate`
+
 First install cargo-generate
+
 ```console
 cargo install cargo-generate
 ```
+
 Then generate a new project
+
 ```console
 cargo generate --git https://github.com/knurling-rs/app-template
 ```
@@ -109,7 +113,7 @@ fn main() -> ! {
 This program is a bit different from a standard Rust program so let's take a
 closer look.
 
-`#![no_std]` indicates that this program will *not* link to the standard crate,
+`#![no_std]` indicates that this program will _not_ link to the standard crate,
 `std`. Instead it will link to its subset: the `core` crate.
 
 `#![no_main]` indicates that this program won't use the standard `main`
@@ -129,7 +133,7 @@ that'd be `#[entry]`.
 [entry]: https://docs.rs/cortex-m-rt-macros/latest/cortex_m_rt_macros/attr.entry.html
 [`cortex-m-rt`]: https://crates.io/crates/cortex-m-rt
 
-`fn main() -> !`. Our program will be the *only* process running on the target
+`fn main() -> !`. Our program will be the _only_ process running on the target
 hardware so we don't want it to end! We use a [divergent function](https://doc.rust-lang.org/rust-by-example/fn/diverging.html) (the `-> !`
 bit in the function signature) to ensure at compile time that'll be the case.
 
@@ -176,7 +180,7 @@ MEMORY
 */
 ```
 
-The next step is to *cross* compile the program for the Cortex-M3 architecture.
+The next step is to _cross_ compile the program for the Cortex-M3 architecture.
 That's as simple as running `cargo build --target $TRIPLE` if you know what the
 compilation target (`$TRIPLE`) should be. Luckily, the `.cargo/config.toml` in the
 template has the answer:
@@ -199,12 +203,12 @@ To cross compile for the Cortex-M3 architecture we have to use
 the Rust toolchain, it would now be a good time to add that target to the toolchain,
 if you haven't done it yet:
 
-``` console
+```console
 rustup target add thumbv7m-none-eabi
 ```
 
- Since the `thumbv7m-none-eabi` compilation target has been set as the default in 
- your `.cargo/config.toml` file, the two commands below do the same:
+Since the `thumbv7m-none-eabi` compilation target has been set as the default in
+your `.cargo/config.toml` file, the two commands below do the same:
 
 ```console
 cargo build --target thumbv7m-none-eabi
@@ -219,16 +223,237 @@ can inspect it using `cargo-binutils`.
 With `cargo-readobj` we can print the ELF headers to confirm that this is an ARM
 binary.
 
-``` console
+```console
 cargo readobj --bin app -- --file-headers
 ```
 
 Note that:
-* `--bin app` is sugar for inspect the binary at `target/$TRIPLE/debug/app`
-* `--bin app` will also (re)compile the binary, if necessary
 
+# QEMU
 
-``` text
+이제 Cortex-M3 마이크로컨트롤러인 [LM3S6965]용 프로그램을 작성해 보겠습니다.
+이 장의 첫 타깃으로 이 칩을 고른 이유는 QEMU로 [에뮬레이션할 수 있기](https://wiki.qemu.org/Documentation/Platforms/ARM#Supported_in_qemu-system-arm)
+때문입니다. 덕분에 이 섹션에서는 실제 하드웨어를 만지지 않고도 도구 체인과 개발 과정에 집중할 수 있습니다.
+
+[LM3S6965]: http://www.ti.com/product/LM3S6965
+
+**중요**
+이 튜토리얼에서는 프로젝트 이름으로 "app"을 사용합니다.
+문서에서 "app"이라는 단어가 나오면, 여러분이 선택한 프로젝트 이름으로 바꿔 읽으면 됩니다.
+혹은 실제 프로젝트 이름을 그냥 "app"으로 정해도 됩니다.
+
+## 비표준 Rust 프로그램 만들기
+
+새 프로젝트를 만들기 위해 [`cortex-m-quickstart`] 프로젝트 템플릿을 사용하겠습니다.
+생성된 프로젝트에는 최소한의 애플리케이션이 포함되며, 이는 새로운 임베디드 Rust 애플리케이션의
+좋은 출발점이 됩니다. 또한 `examples` 디렉터리도 포함되어, 임베디드 Rust의 핵심 기능을 보여 주는
+여러 개의 독립 예제가 함께 제공됩니다.
+
+[`cortex-m-quickstart`]: https://github.com/rust-embedded/cortex-m-quickstart
+
+### `cargo-generate` 사용하기
+
+먼저 cargo-generate를 설치합니다.
+
+```console
+cargo install cargo-generate
+```
+
+그다음 새 프로젝트를 생성합니다.
+
+```console
+cargo generate --git https://github.com/knurling-rs/app-template
+```
+
+```text
+ Project Name: app
+ Creating project called `app`...
+ Done! New project created /tmp/app
+```
+
+```console
+cd app
+```
+
+### `git` 사용하기
+
+저장소를 클론합니다.
+
+```console
+git clone https://github.com/rust-embedded/cortex-m-quickstart app
+cd app
+```
+
+그다음 `Cargo.toml` 파일의 플레이스홀더를 채웁니다.
+
+```toml
+[package]
+authors = ["{{authors}}"] # "{{authors}}" -> "John Smith"
+edition = "2018"
+name = "{{project-name}}" # "{{project-name}}" -> "app"
+version = "0.1.0"
+
+# ..
+
+[[bin]]
+name = "{{project-name}}" # "{{project-name}}" -> "app"
+test = false
+bench = false
+```
+
+### 둘 다 사용하지 않는 방법
+
+`cortex-m-quickstart` 템플릿의 최신 스냅샷을 내려받아 압축을 풉니다.
+
+```console
+curl -LO https://github.com/rust-embedded/cortex-m-quickstart/archive/master.zip
+unzip master.zip
+mv cortex-m-quickstart-master app
+cd app
+```
+
+또는 [`cortex-m-quickstart`] 페이지로 이동해 초록색 "Clone or
+download" 버튼을 누르고 "Download ZIP"을 선택해도 됩니다.
+
+그런 다음 "`git` 사용하기" 절의 두 번째 부분에서 했던 것처럼 `Cargo.toml`
+파일의 플레이스홀더를 채웁니다.
+
+## 프로그램 개요
+
+편의를 위해 `src/main.rs`의 핵심 부분만 먼저 보면 다음과 같습니다.
+
+```rust,ignore
+#![no_std]
+#![no_main]
+
+use panic_halt as _;
+
+use cortex_m_rt::entry;
+
+#[entry]
+fn main() -> ! {
+    loop {
+        // your code goes here
+    }
+}
+```
+
+이 프로그램은 일반적인 Rust 프로그램과 조금 다르므로, 하나씩 살펴보겠습니다.
+
+`#![no_std]`는 이 프로그램이 표준 crate인 `std`에 링크되지 않는다는 뜻입니다.
+대신 그 부분집합인 `core` crate에 링크됩니다.
+
+`#![no_main]`는 이 프로그램이 대부분의 Rust 프로그램이 사용하는 표준 `main`
+인터페이스를 사용하지 않는다는 뜻입니다. `no_main`을 쓰는 주된 이유는 `no_std`
+환경에서 표준 `main` 인터페이스를 사용하려면 nightly가 필요하기 때문입니다.
+
+`use panic_halt as _;`는 프로그램의 panic 동작을 정의하는 `panic_handler`를 제공하는
+crate를 가져옵니다. 이 부분은 [Panicking](panicking.md) 장에서 더 자세히 다룹니다.
+
+[`#[entry]`][entry]는 [`cortex-m-rt`] crate가 제공하는 속성으로, 프로그램의 진입점을
+표시할 때 사용합니다. 표준 `main` 인터페이스를 사용하지 않으므로, 프로그램의 시작점을
+나타내는 다른 수단이 필요하고 그것이 바로 `#[entry]`입니다.
+
+[entry]: https://docs.rs/cortex-m-rt-macros/latest/cortex_m_rt_macros/attr.entry.html
+[`cortex-m-rt`]: https://crates.io/crates/cortex-m-rt
+
+`fn main() -> !`에서 우리의 프로그램은 타깃 하드웨어 위에서 실행되는 _유일한_ 프로세스이므로
+끝나면 안 됩니다. 이를 컴파일 타임에 보장하기 위해 [divergent function](https://doc.rust-lang.org/rust-by-example/fn/diverging.html)
+(`-> !` 반환형)을 사용합니다.
+
+## 크로스 컴파일
+
+우선 타깃 마이크로컨트롤러, 여기서는 LM3S6965의 메모리 레이아웃이 필요합니다.
+이 정보가 없으면 빌드 시 링크에 실패합니다. 프로젝트 루트에 `memory.x` 파일을 만들고
+다음 내용을 붙여 넣으세요.
+
+```text
+MEMORY
+{
+  /* NOTE 1 K = 1 KiBi = 1024 bytes */
+  /* TODO Adjust these memory regions to match your device memory layout */
+  /* These values correspond to the LM3S6965, one of the few devices QEMU can emulate */
+  FLASH : ORIGIN = 0x00000000, LENGTH = 256K
+  RAM : ORIGIN = 0x20000000, LENGTH = 64K
+}
+
+/* This is where the call stack will be allocated. */
+/* The stack is of the full descending type. */
+/* You may want to use this variable to locate the call stack and static
+   variables in different memory regions. Below is shown the default value */
+/* _stack_start = ORIGIN(RAM) + LENGTH(RAM); */
+
+/* You can use this symbol to customize the location of the .text section */
+/* If omitted the .text section will be placed right after the .vector_table
+   section */
+/* This is required only on microcontrollers that store some configuration right
+   after the vector table */
+/* _stext = ORIGIN(FLASH) + 0x400; */
+
+/* Example of putting non-initialized variables into custom RAM locations. */
+/* This assumes you have defined a region RAM2 above, and in the Rust
+   sources added the attribute `#[link_section = ".ram2bss"]` to the data
+   you want to place there. */
+/* Note that the section will not be zero-initialized by the runtime! */
+/* SECTIONS {
+     .ram2bss (NOLOAD) : ALIGN(4) {
+       *(.ram2bss);
+       . = ALIGN(4);
+     } > RAM2
+   } INSERT AFTER .bss;
+*/
+```
+
+다음 단계는 이 프로그램을 Cortex-M3 아키텍처용으로 _크로스_ 컴파일하는 것입니다.
+컴파일 타깃(`$TRIPLE`)만 알고 있다면 `cargo build --target $TRIPLE`을 실행하면 됩니다.
+다행히 템플릿의 `.cargo/config.toml`에 답이 들어 있습니다.
+
+```console
+tail -n6 .cargo/config.toml
+```
+
+```toml
+[build]
+# Pick ONE of these compilation targets
+# target = "thumbv6m-none-eabi"    # Cortex-M0 and Cortex-M0+
+target = "thumbv7m-none-eabi"    # Cortex-M3
+# target = "thumbv7em-none-eabi"   # Cortex-M4 and Cortex-M7 (no FPU)
+# target = "thumbv7em-none-eabihf" # Cortex-M4F and Cortex-M7F (with FPU)
+```
+
+Cortex-M3용으로 크로스 컴파일하려면 `thumbv7m-none-eabi`를 사용해야 합니다.
+이 타깃은 Rust 툴체인 설치 시 자동으로 추가되지 않으므로, 아직 설치하지 않았다면
+지금 추가하는 것이 좋습니다.
+
+```console
+rustup target add thumbv7m-none-eabi
+```
+
+`thumbv7m-none-eabi`가 `.cargo/config.toml`에서 기본 타깃으로 설정되어 있으므로,
+아래 두 명령은 같은 의미입니다.
+
+```console
+cargo build --target thumbv7m-none-eabi
+cargo build
+```
+
+## 바이너리 살펴보기
+
+이제 `target/thumbv7m-none-eabi/debug/app`에 네이티브가 아닌 ELF 바이너리가 생겼습니다.
+`cargo-binutils`를 사용해 내용을 확인할 수 있습니다.
+
+`cargo-readobj`를 사용하면 ELF 헤더를 출력하여 이 바이너리가 ARM용임을 확인할 수 있습니다.
+
+```console
+cargo readobj --bin app -- --file-headers
+```
+
+참고:
+
+- `--bin app`은 `target/$TRIPLE/debug/app` 바이너리를 검사하는 축약형입니다.
+- `--bin app`은 필요하다면 바이너리를 자동으로 다시 컴파일합니다.
+
+```text
 ELF Header:
   Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00
   Class:                             ELF32
@@ -251,15 +476,15 @@ ELF Header:
   Section header string table index: 18
 ```
 
-`cargo-size` can print the size of the linker sections of the binary.
-
+`cargo-size`를 사용하면 바이너리의 각 링커 섹션 크기를 출력할 수 있습니다.
 
 ```console
 cargo size --bin app --release -- -A
 ```
-we use `--release` to inspect the optimized version
 
-``` text
+여기서는 최적화된 버전을 보기 위해 `--release`를 사용합니다.
+
+```text
 app  :
 section             size        addr
 .vector_table       1024         0x0
@@ -281,36 +506,28 @@ section             size        addr
 Total              14570
 ```
 
-> A refresher on ELF linker sections
+> ELF 링커 섹션 다시 보기
 >
-> - `.text` contains the program instructions
-> - `.rodata` contains constant values like strings
-> - `.data` contains statically allocated variables whose initial values are
->   *not* zero
-> - `.bss` also contains statically allocated variables whose initial values
->   *are* zero
-> - `.vector_table` is a *non*-standard section that we use to store the vector
->   (interrupt) table
-> - `.ARM.attributes` and the `.debug_*` sections contain metadata and will
->   *not* be loaded onto the target when flashing the binary.
+> - `.text`에는 프로그램 명령어가 들어 있습니다.
+> - `.rodata`에는 문자열 같은 상수 값이 들어 있습니다.
+> - `.data`에는 초기값이 0이 _아닌_ 정적 할당 변수가 들어 있습니다.
+> - `.bss`에는 초기값이 0인 정적 할당 변수가 들어 있습니다.
+> - `.vector_table`은 벡터(인터럽트) 테이블을 저장하기 위해 사용하는 _비표준_ 섹션입니다.
+> - `.ARM.attributes`와 `.debug_*` 섹션에는 메타데이터가 들어 있으며, 바이너리를 플래시할 때 타깃에 로드되지 않습니다.
 
-**IMPORTANT**: ELF files contain metadata like debug information so their *size
-on disk* does *not* accurately reflect the space the program will occupy when
-flashed on a device. *Always* use `cargo-size` to check how big a binary really
-is.
+**중요**: ELF 파일에는 디버그 정보 같은 메타데이터가 포함되므로, *디스크 상의 크기*는
+기기에 플래시되었을 때 실제 차지하는 공간을 정확히 반영하지 않습니다. 바이너리의 진짜 크기는
+항상 `cargo-size`로 확인하세요.
 
-`cargo-objdump` can be used to disassemble the binary.
+`cargo-objdump`를 사용하면 바이너리를 디스어셈블할 수 있습니다.
 
 ```console
 cargo objdump --bin app --release -- --disassemble --no-show-raw-insn --print-imm-hex
 ```
 
-> **NOTE** if the above command complains about `Unknown command line argument` see
-> the following bug report: https://github.com/rust-embedded/book/issues/269
+> **참고** 위 명령이 `Unknown command line argument` 오류를 내면 다음 이슈를 참고하세요. https://github.com/rust-embedded/book/issues/269
 
-> **NOTE** this output can differ on your system. New versions of rustc, LLVM
-> and libraries can generate different assembly. We truncated some of the instructions
-> to keep the snippet small.
+> **참고** 이 출력은 시스템에 따라 다를 수 있습니다. rustc, LLVM, 라이브러리 버전이 다르면 어셈블리 결과도 달라질 수 있습니다. 예제는 짧게 유지하기 위해 일부 명령만 남겼습니다.
 
 ```text
 app:  file format ELF32-arm-little
@@ -351,40 +568,37 @@ HardFault:
      663: <unknown>
 ```
 
-## Running
+## 실행하기
 
-Next, let's see how to run an embedded program on QEMU! This time we'll use the
-`hello` example which actually does something. By default, this example uses `[defmt]`
-and RTT to print text.
+이제 QEMU에서 임베디드 프로그램을 실행하는 방법을 보겠습니다. 이번에는 실제로 동작하는
+`hello` 예제를 사용합니다. 기본적으로 이 예제는 `[defmt]`와 RTT를 사용해 텍스트를 출력합니다.
 
 [defmt]: https://defmt.ferrous-systems.com/
 
-> **NOTE** `defmt` is a third-party dependency (i.e. non-core) widely used in the
-> Embedded Rust ecosystem.
+> **참고** `defmt`는 임베디드 Rust 생태계에서 널리 쓰이는 서드파티(즉 non-core) 의존성입니다.
 
-In order to read and decode the messages produced by `defmt` in the host, we need to
-switch the RTT transport output to semihosting. When using real hardware this requires
-a debug session but when using QEMU this Just Works.
+호스트에서 `defmt`가 만들어 내는 메시지를 읽고 디코드하려면 RTT 출력 전송을 semihosting으로
+바꿔야 합니다. 실제 하드웨어에서는 이 작업에 디버그 세션이 필요하지만, QEMU에서는 바로 동작합니다.
 
-Let's switch the dependencies:
+의존성을 바꿔 봅시다.
 
 ```console
 cargo remove defmt-rtt
 cargo add defmt-semihosting
 ```
 
-Open `src/lib.rs` and replace `use defmt_rtt as _;` by `use defmt_semihosting as _;`
+`src/lib.rs`를 열고 `use defmt_rtt as _;`를 `use defmt_semihosting as _;`로 바꾸세요.
 
-Now we can build the example:
+이제 예제를 빌드할 수 있습니다.
 
 ```console
 cargo build --bin hello
 ```
 
-The output binary will be located at
+출력 바이너리는 다음 위치에 생성됩니다.
 `target/thumbv7m-none-eabi/debug/hello`.
 
-To run this binary on QEMU, the following command would be usually enough:
+이 바이너리를 QEMU에서 실행할 때는 보통 아래 명령이면 충분합니다.
 
 ```console
 qemu-system-arm \
@@ -395,8 +609,8 @@ qemu-system-arm \
   -kernel target/thumbv7m-none-eabi/debug/hello
 ```
 
-In our case, since we use `defmt`, the host will not be able to decode the output. Instead, we
-will need a tool by Ferrous Systems named [`qemu-run`]:
+하지만 여기서는 `defmt`를 사용하므로 호스트가 출력을 그대로 디코드할 수 없습니다.
+대신 Ferrous Systems가 만든 [`qemu-run`] 도구를 사용해야 합니다.
 
 [`qemu-run`]: https://github.com/knurling-rs/defmt/tree/main/qemu-run/
 
@@ -410,8 +624,8 @@ cargo run -- --machine lm3s6965evb ../qemu-rs/target/thumbv7m-none-eabi/debug/he
 Hello, world!
 ```
 
-The command should successfully exit (exit code = 0) after printing the text. On
-*nix you can check that with the following command:
+이 명령은 텍스트를 출력한 뒤 성공적으로 종료되어야 합니다(종료 코드 = 0).
+\*nix에서는 아래 명령으로 확인할 수 있습니다.
 
 ```console
 echo $?
@@ -421,32 +635,28 @@ echo $?
 0
 ```
 
-Let's break down that QEMU command:
+이제 QEMU 명령을 하나씩 뜯어보겠습니다.
 
-- `qemu-system-arm`. This is the QEMU emulator. There are a few variants of
-  these QEMU binaries; this one does full *system* emulation of *ARM* machines
-  hence the name.
+- `qemu-system-arm`. QEMU 에뮬레이터입니다. QEMU 바이너리는 여러 변형이 있는데,
+  이것은 _ARM_ 머신의 전체 _시스템_ 에뮬레이션을 수행합니다.
 
-- `-cpu cortex-m3`. This tells QEMU to emulate a Cortex-M3 CPU. Specifying the
-  CPU model lets us catch some miscompilation errors: for example, running a
-  program compiled for the Cortex-M4F, which has a hardware FPU, will make QEMU
-  error during its execution.
+- `-cpu cortex-m3`. QEMU에 Cortex-M3 CPU를 에뮬레이션하라고 지시합니다.
+  CPU 모델을 명시하면 일부 잘못된 컴파일을 잡아낼 수 있습니다. 예를 들어 하드웨어 FPU가 있는
+  Cortex-M4F용으로 컴파일한 프로그램을 실행하면 QEMU가 실행 중 오류를 냅니다.
 
-- `-machine lm3s6965evb`. This tells QEMU to emulate the LM3S6965EVB, an
-  evaluation board that contains a LM3S6965 microcontroller.
+- `-machine lm3s6965evb`. LM3S6965 마이크로컨트롤러를 탑재한 LM3S6965EVB 평가 보드를
+  에뮬레이션하라고 지시합니다.
 
-- `-nographic`. This tells QEMU to not launch its GUI.
+- `-nographic`. GUI를 띄우지 않도록 합니다.
 
-- `-semihosting-config (..)`. This tells QEMU to enable semihosting. Semihosting
-  lets the emulated device, among other things, use the host stdout, stderr and
-  stdin and create files on the host.
+- `-semihosting-config (..)`. Semihosting을 활성화합니다. Semihosting을 사용하면 에뮬레이트된
+  장치가 호스트의 stdout, stderr, stdin을 사용하거나 호스트에 파일을 만들 수 있습니다.
 
-- `-kernel $file`. This tells QEMU which binary to load and run on the emulated
-  machine.
+- `-kernel $file`. 에뮬레이트된 머신에서 어떤 바이너리를 로드하고 실행할지 지정합니다.
 
-Typing out that long QEMU command is too much work! We can set a custom runner
-to simplify the process. `.cargo/config.toml` has a commented out runner that invokes
-QEMU; let's uncomment it:
+이 긴 QEMU 명령을 매번 직접 입력하는 것은 번거롭습니다. 과정을 단순하게 하려면 커스텀 runner를
+설정하면 됩니다. `.cargo/config.toml`에는 QEMU를 호출하는 runner가 주석 처리되어 있으니,
+이를 활성화해 봅시다.
 
 ```console
 head -n3 .cargo/config.toml
@@ -458,9 +668,8 @@ head -n3 .cargo/config.toml
 runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
 ```
 
-This runner only applies to the `thumbv7m-none-eabi` target, which is our
-default compilation target. Now `cargo run` will compile the program and run it
-on QEMU:
+이 runner는 우리의 기본 컴파일 타깃인 `thumbv7m-none-eabi`에만 적용됩니다.
+이제 `cargo run`은 프로그램을 컴파일하고 QEMU에서 바로 실행합니다.
 
 ```console
 cargo run --example hello --release
@@ -473,21 +682,19 @@ cargo run --example hello --release
 Hello, world!
 ```
 
-## Debugging
+## 디버깅
 
-Debugging is critical to embedded development. Let's see how it's done.
+디버깅은 임베디드 개발에서 매우 중요합니다. 어떻게 하는지 살펴보겠습니다.
 
-Debugging an embedded device involves *remote* debugging as the program that we
-want to debug won't be running on the machine that's running the debugger
-program (GDB or LLDB).
+임베디드 장치 디버깅은 기본적으로 _원격_ 디버깅입니다. 디버그하려는 프로그램은
+디버거(GDB 또는 LLDB)를 실행하는 머신이 아니라 타깃 장치에서 실행되기 때문입니다.
 
-Remote debugging involves a client and a server. In a QEMU setup, the client
-will be a GDB (or LLDB) process and the server will be the QEMU process that's
-also running the embedded program.
+원격 디버깅은 클라이언트와 서버로 구성됩니다. QEMU 환경에서는 클라이언트가 GDB(또는 LLDB)
+프로세스이고, 서버는 임베디드 프로그램도 함께 실행 중인 QEMU 프로세스입니다.
 
-In this section we'll use the `hello` example we already compiled.
+이 섹션에서는 앞에서 이미 컴파일한 `hello` 예제를 사용합니다.
 
-The first debugging step is to launch QEMU in debugging mode:
+첫 번째 단계는 QEMU를 디버깅 모드로 실행하는 것입니다.
 
 ```console
 qemu-system-arm \
@@ -500,29 +707,24 @@ qemu-system-arm \
   -kernel target/thumbv7m-none-eabi/debug/examples/hello
 ```
 
-This command won't print anything to the console and will block the terminal. We
-have passed two extra flags this time:
+이 명령은 콘솔에 아무것도 출력하지 않고 터미널을 점유한 채 대기합니다.
+이번에는 두 개의 추가 플래그를 넘겼습니다.
 
-- `-gdb tcp::3333`. This tells QEMU to wait for a GDB connection on TCP
-  port 3333.
+- `-gdb tcp::3333`. TCP 3333 포트에서 GDB 연결을 기다리게 합니다.
 
-- `-S`. This tells QEMU to freeze the machine at startup. Without this the
-  program would have reached the end of main before we had a chance to launch
-  the debugger!
+- `-S`. 시작 직후 머신을 정지 상태로 둡니다. 이 옵션이 없으면 디버거를 띄우기도 전에
+  프로그램이 main 끝까지 실행돼 버릴 수 있습니다.
 
-Next we launch GDB in another terminal and tell it to load the debug symbols of
-the example:
+다음으로 다른 터미널에서 GDB를 실행하고, 예제의 디버그 심볼을 로드하도록 합니다.
 
 ```console
 gdb-multiarch -q target/thumbv7m-none-eabi/debug/examples/hello
 ```
 
-**NOTE**: you might need another version of gdb instead of `gdb-multiarch` depending
-on which one you installed in the installation chapter. This could also be
-`arm-none-eabi-gdb` or just `gdb`.
+**참고**: 설치 장에서 어떤 버전을 설치했는지에 따라 `gdb-multiarch` 대신 다른 GDB를 사용해야 할 수 있습니다.
+예를 들어 `arm-none-eabi-gdb` 또는 그냥 `gdb`일 수도 있습니다.
 
-Then within the GDB shell we connect to QEMU, which is waiting for a connection
-on TCP port 3333.
+이제 GDB 셸 안에서 TCP 3333 포트에서 대기 중인 QEMU에 연결합니다.
 
 ```console
 target remote :3333
@@ -534,26 +736,24 @@ Reset () at $REGISTRY/cortex-m-rt-0.6.1/src/lib.rs:473
 473     pub unsafe extern "C" fn Reset() -> ! {
 ```
 
+프로세스가 멈춰 있고 프로그램 카운터가 `Reset`이라는 함수를 가리키는 것을 볼 수 있습니다.
+이 함수는 reset handler이며, Cortex-M 코어가 부팅 시 가장 먼저 실행하는 코드입니다.
 
-You'll see that the process is halted and that the program counter is pointing
-to a function named `Reset`. That is the reset handler: what Cortex-M cores
-execute upon booting.
-
->  Note that on some setup, instead of displaying the line `Reset () at $REGISTRY/cortex-m-rt-0.6.1/src/lib.rs:473` as shown above, gdb may print some warnings like : 
+> 참고: 어떤 환경에서는 위와 같이 `Reset () at $REGISTRY/cortex-m-rt-0.6.1/src/lib.rs:473`가 보이는 대신 다음과 같은 경고가 출력될 수 있습니다.
 >
->`core::num::bignum::Big32x40::mul_small () at src/libcore/num/bignum.rs:254`
+> `core::num::bignum::Big32x40::mul_small () at src/libcore/num/bignum.rs:254`
 > `    src/libcore/num/bignum.rs: No such file or directory.`
-> 
-> That's a known glitch. You can safely ignore those warnings, you're most likely at Reset(). 
+>
+> 이는 알려진 현상입니다. 경고는 무시해도 되며, 대부분의 경우 현재 위치는 Reset()입니다.
 
-
-This reset handler will eventually call our main function. Let's skip all the
-way there using a breakpoint and the `continue` command. To set the breakpoint, let's first take a look where we would like to break in our code, with the `list` command.
+이 reset handler는 결국 우리의 main 함수를 호출합니다. 브레이크포인트와 `continue` 명령으로
+그 지점까지 이동해 보겠습니다. 먼저 `list` 명령으로 어디에 멈추고 싶은지 코드를 확인합니다.
 
 ```console
 list main
 ```
-This will show the source code, from the file examples/hello.rs. 
+
+그러면 `examples/hello.rs` 파일의 소스 코드가 표시됩니다.
 
 ```text
 6       use panic_halt as _;
@@ -567,12 +767,15 @@ This will show the source code, from the file examples/hello.rs.
 14
 15          // exit QEMU
 ```
-We would like to add a breakpoint just before the "Hello, world!", which is on line 13. We do that with the `break` command:
+
+우리는 "Hello, world!"가 출력되기 직전인 13번째 줄에 브레이크포인트를 걸고 싶습니다.
+`break` 명령으로 설정합니다.
 
 ```console
 break 13
 ```
-We can now instruct gdb to run up to our main function, with the `continue` command:
+
+이제 `continue` 명령으로 GDB가 main 함수 쪽으로 계속 실행하도록 합니다.
 
 ```console
 continue
@@ -585,10 +788,9 @@ Breakpoint 1, hello::__cortex_m_rt_main () at examples\hello.rs:13
 13          hprintln!("Hello, world!").unwrap();
 ```
 
-We are now close to the code that prints "Hello, world!". Let's move forward
-using the `next` command.
+이제 "Hello, world!"를 출력하는 코드 바로 근처에 왔습니다. `next` 명령으로 한 단계 진행합니다.
 
-``` console
+```console
 next
 ```
 
@@ -596,15 +798,14 @@ next
 16          debug::exit(debug::EXIT_SUCCESS);
 ```
 
-At this point you should see "Hello, world!" printed on the terminal that's
-running `qemu-system-arm`.
+이 시점에서 `qemu-system-arm`을 실행 중인 터미널에 "Hello, world!"가 출력되어야 합니다.
 
 ```text
 $ qemu-system-arm (..)
 Hello, world!
 ```
 
-Calling `next` again will terminate the QEMU process.
+다시 한 번 `next`를 호출하면 QEMU 프로세스가 종료됩니다.
 
 ```console
 next
@@ -614,8 +815,8 @@ next
 [Inferior 1 (Remote target) exited normally]
 ```
 
-You can now exit the GDB session.
+이제 GDB 세션을 종료하면 됩니다.
 
-``` console
+```console
 quit
 ```

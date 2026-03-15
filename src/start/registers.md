@@ -1,16 +1,29 @@
-# Memory Mapped Registers
+# 메모리 매핑 레지스터
 
-Embedded systems can only get so far by executing normal Rust code and moving data around in RAM. If we want to get any information into or out of our system (be that blinking an LED, detecting a button press or communicating with an off-chip peripheral on some sort of bus) we're going to have to dip into the world of Peripherals and their 'memory mapped registers'.
+임베디드 시스템은 일반적인 Rust 코드를 실행하고 RAM 안에서 데이터를 옮기는 것만으로는 한계가 있습니다.
+LED를 깜박이게 하거나, 버튼 입력을 감지하거나, 외부 주변장치와 어떤 버스로 통신하는 등
+시스템 안팎으로 정보를 주고받으려면 주변장치와 그 주변장치의 '메모리 매핑 레지스터' 세계로 들어가야 합니다.
 
-You may well find that the code you need to access the peripherals in your micro-controller has already been written, at one of the following levels:
+마이크로컨트롤러 주변장치에 접근하는 데 필요한 코드가 이미 작성되어 있는 경우가 많습니다.
+보통 다음 수준 중 하나에 해당합니다.
+
 <p align="center">
 <img title="Common crates" src="../assets/crates.png">
 </p>
 
-* Micro-architecture Crate - This sort of crate handles any useful routines common to the processor core your microcontroller is using, as well as any peripherals that are common to all micro-controllers that use that particular type of processor core. For example the [cortex-m] crate gives you functions to enable and disable interrupts, which are the same for all Cortex-M based micro-controllers. It also gives you access to the 'SysTick' peripheral included with all Cortex-M based micro-controllers.
-* Peripheral Access Crate (PAC) - This sort of crate is a thin wrapper over the various memory-wrapper registers defined for your particular part-number of micro-controller you are using. For example, [tm4c123x] for the Texas Instruments Tiva-C TM4C123 series, or [stm32f30x] for the ST-Micro STM32F30x series. Here, you'll be interacting with the registers directly, following each peripheral's operating instructions given in your micro-controller's Technical Reference Manual.
-* HAL Crate - These crates offer a more user-friendly API for your particular processor, often by implementing some common traits defined in [embedded-hal]. For example, this crate might offer a `Serial` struct, with a constructor that takes an appropriate set of GPIO pins and a baud rate, and offers some sort of `write_byte` function for sending data. See the chapter on [Portability] for more information on [embedded-hal].
-* Board Crate - These crates go one step further than a HAL Crate by pre-configuring various peripherals and GPIO pins to suit the specific developer kit or board you are using, such as [stm32f3-discovery] for the STM32F3DISCOVERY board.
+- 마이크로아키텍처 crate: 마이크로컨트롤러가 사용하는 프로세서 코어에 공통인 유용한 루틴과,
+  그 코어를 사용하는 모든 마이크로컨트롤러에 공통인 주변장치를 다룹니다. 예를 들어 [cortex-m] crate는
+  모든 Cortex-M 기반 마이크로컨트롤러에서 동일한 인터럽트 활성화/비활성화 함수를 제공하며,
+  모든 Cortex-M에 포함된 `SysTick` 주변장치 접근도 제공합니다.
+- Peripheral Access Crate (PAC): 특정 마이크로컨트롤러 부품 번호에 정의된 다양한 메모리 매핑 레지스터를 감싼 얇은 래퍼입니다.
+  예를 들어 Texas Instruments Tiva-C TM4C123 계열용 [tm4c123x], STMicro STM32F30x 계열용 [stm32f30x]가 있습니다.
+  이 계층에서는 마이크로컨트롤러 Technical Reference Manual에 나온 동작 지침을 따라 레지스터를 직접 다루게 됩니다.
+- HAL crate: [embedded-hal]에 정의된 공통 trait를 구현하는 방식으로,
+  특정 프로세서에 대해 더 사용하기 쉬운 API를 제공합니다. 예를 들어 적절한 GPIO 핀과 baud rate를 받는
+  `Serial` 생성자와, 데이터를 보내기 위한 `write_byte` 같은 함수를 제공할 수 있습니다.
+  [embedded-hal]에 대해서는 [Portability] 장을 참고하세요.
+- Board crate: HAL crate보다 한 단계 더 올라가, 사용 중인 특정 개발 보드에 맞게 주변장치와 GPIO 핀을
+  미리 구성해 둡니다. STM32F3DISCOVERY 보드용 [stm32f3-discovery]가 대표적인 예입니다.
 
 [cortex-m]: https://crates.io/crates/cortex-m
 [tm4c123x]: https://crates.io/crates/tm4c123x
@@ -20,17 +33,24 @@ You may well find that the code you need to access the peripherals in your micro
 [stm32f3-discovery]: https://crates.io/crates/stm32f3-discovery
 [Discovery]: https://rust-embedded.github.io/discovery/
 
-## Board Crate
+## Board crate
 
-A board crate is the perfect starting point, if you're new to embedded Rust. They nicely abstract the HW details that might be overwhelming when starting studying this subject, and makes standard tasks easy, like turning a LED on or off. The functionality it exposes varies a lot between boards. Since this book aims at staying hardware agnostic, the board crates won't be covered by this book.
+임베디드 Rust가 처음이라면 board crate는 완벽한 출발점입니다. 학습 초기에 부담스러울 수 있는
+하드웨어 세부 사항을 잘 추상화해 주고, LED를 켜고 끄는 일 같은 기본 작업을 쉽게 만들어 줍니다.
+다만 제공하는 기능은 보드마다 차이가 큽니다. 이 책은 하드웨어 비종속성을 유지하는 것이 목표이므로,
+board crate 자체는 자세히 다루지 않습니다.
 
-If you want to experiment with the STM32F3DISCOVERY board, it is highly recommended to take a look at the [stm32f3-discovery] board crate, which provides functionality to blink the board LEDs, access its compass, bluetooth and more. The [Discovery] book offers a great introduction to the use of a board crate.
+STM32F3DISCOVERY 보드로 실험해 보고 싶다면 [stm32f3-discovery] board crate를 강력히 추천합니다.
+이 crate는 보드 LED 깜박이기, 나침반 접근, 블루투스 등 다양한 기능을 제공합니다.
+[Discovery] 책은 board crate 사용법에 대한 훌륭한 입문 자료입니다.
 
-But if you're working on a system that doesn't yet have dedicated board crate, or you need functionality not provided by existing crates, read on as we start from the bottom, with the micro-architecture crates.
+하지만 아직 전용 board crate가 없는 시스템을 다루고 있거나,
+기존 crate가 제공하지 않는 기능이 필요하다면, 더 아래 계층인 마이크로아키텍처 crate부터 시작해 봅시다.
 
-## Micro-architecture crate
+## 마이크로아키텍처 crate
 
-Let's look at the SysTick peripheral that's common to all Cortex-M based micro-controllers. We can find a pretty low-level API in the [cortex-m] crate, and we can use it like this:
+모든 Cortex-M 기반 마이크로컨트롤러에 공통으로 있는 SysTick 주변장치를 살펴보겠습니다.
+[cortex-m] crate에서 꽤 저수준의 API를 찾을 수 있고, 사용법은 다음과 같습니다.
 
 ```rust,ignore
 #![no_std]
@@ -54,13 +74,21 @@ fn main() -> ! {
     loop {}
 }
 ```
-The functions on the `SYST` struct map pretty closely to the functionality defined by the ARM Technical Reference Manual for this peripheral. There's nothing in this API about 'delaying for X milliseconds' - we have to crudely implement that ourselves using a `while` loop. Note that we can't access our `SYST` struct until we have called `Peripherals::take()` - this is a special routine that guarantees that there is only one `SYST` structure in our entire program. For more on that, see the [Peripherals] section.
+
+`SYST` 구조체의 함수들은 ARM Technical Reference Manual에 정의된 이 주변장치의 기능과 상당히 가깝게 대응됩니다.
+하지만 이 API에는 'X 밀리초 동안 지연하기' 같은 고수준 기능은 없습니다. 그런 동작은 우리가 `while` 루프로 직접 구현해야 합니다.
+또한 `Peripherals::take()`를 호출하기 전에는 `SYST` 구조체에 접근할 수 없다는 점에 주목하세요.
+이 함수는 프로그램 전체에 `SYST` 구조체가 하나만 존재하도록 보장하는 특별한 루틴입니다.
+자세한 내용은 [Peripherals] 섹션을 참고하세요.
 
 [Peripherals]: ../peripherals/index.md
 
-## Using a Peripheral Access Crate (PAC)
+## Peripheral Access Crate(PAC) 사용하기
 
-We won't get very far with our embedded software development if we restrict ourselves to only the basic peripherals included with every Cortex-M. At some point, we're going to need to write some code that's specific to the particular micro-controller we're using. In this example, let's assume we have an Texas Instruments TM4C123 - a middling 80MHz Cortex-M4 with 256 KiB of Flash. We're going to pull in the [tm4c123x] crate to make use of this chip.
+모든 Cortex-M에 포함된 기본 주변장치만으로는 임베디드 소프트웨어 개발을 충분히 진행할 수 없습니다.
+언젠가는 우리가 사용하는 특정 마이크로컨트롤러에 특화된 코드를 작성해야 합니다.
+이 예제에서는 Texas Instruments의 TM4C123, 즉 80MHz Cortex-M4와 256 KiB 플래시를 가진 칩을 사용한다고 가정하겠습니다.
+이 칩을 활용하기 위해 [tm4c123x] crate를 가져오겠습니다.
 
 ```rust,ignore
 #![no_std]
@@ -89,11 +117,20 @@ pub fn init() -> (Delay, Leds) {
 
 ```
 
-We've accessed the `PWM0` peripheral in exactly the same way as we accessed the `SYST` peripheral earlier, except we called `tm4c123x::Peripherals::take()`. As this crate was auto-generated using [svd2rust], the access functions for our register fields take a closure, rather than a numeric argument. While this looks like a lot of code, the Rust compiler can use it to perform a bunch of checks for us, but then generate machine-code which is pretty close to hand-written assembler! Where the auto-generated code isn't able to determine that all possible arguments to a particular accessor function are valid (for example, if the SVD defines the register as 32-bit but doesn't say if some of those 32-bit values have a special meaning), then the function is marked as `unsafe`. We can see this in the example above when setting the `load` and `compa` sub-fields using the `bits()` function.
+`PWM0` 주변장치 접근 방식은 앞서 `SYST`에 접근했던 것과 거의 동일합니다. 차이는 `tm4c123x::Peripherals::take()`를 호출했다는 점뿐입니다.
+이 crate는 [svd2rust]로 자동 생성되었기 때문에, 레지스터 필드 접근 함수가 숫자 인자 대신 closure를 받습니다.
+코드가 길어 보일 수 있지만, Rust 컴파일러는 이를 바탕으로 많은 검사를 수행하면서도,
+최종적으로는 손으로 쓴 어셈블리에 가까운 머신 코드를 생성할 수 있습니다.
+한편 자동 생성 코드가 어떤 accessor 함수에 대해 가능한 모든 인자가 유효한지 판별할 수 없는 경우
+(예를 들어 SVD는 레지스터가 32비트라고 정의했지만 그 32비트 값 중 일부가 특별한 의미를 갖는지는 설명하지 않는 경우),
+그 함수는 `unsafe`로 표시됩니다. 위 예제에서 `bits()` 함수로 `load`와 `compa` 하위 필드를 설정하는 부분이 그 예입니다.
 
-### Reading
+### 읽기
 
-The `read()` function returns an object which gives read-only access to the various sub-fields within this register, as defined by the manufacturer's SVD file for this chip. You can find all the functions available on special `R` return type for this particular register, in this particular peripheral, on this particular chip, in the [tm4c123x documentation][tm4c123x documentation R].
+`read()` 함수는 이 칩의 제조사 SVD 파일에 정의된 대로,
+해당 레지스터 안의 여러 하위 필드에 대한 읽기 전용 접근을 제공하는 객체를 반환합니다.
+이 특정 칩의 특정 주변장치, 특정 레지스터에 대한 `R` 반환 타입이 어떤 함수를 제공하는지는
+[tm4c123x 문서][tm4c123x documentation R]에서 확인할 수 있습니다.
 
 ```rust,ignore
 if pwm.ctl.read().globalsync0().is_set() {
@@ -101,23 +138,31 @@ if pwm.ctl.read().globalsync0().is_set() {
 }
 ```
 
-### Writing
+### 쓰기
 
-The `write()` function takes a closure with a single argument. Typically we call this `w`. This argument then gives read-write access to the various sub-fields within this register, as defined by the manufacturer's SVD file for this chip. Again, you can find all the functions available on the 'w' for this particular register, in this particular peripheral, on this particular chip, in the [tm4c123x documentation][tm4c123x Documentation W]. Note that all of the sub-fields that we do not set will be set to a default value for us - any existing content in the register will be lost.
+`write()` 함수는 하나의 인자를 받는 closure를 받습니다. 보통 이 인자를 `w`라고 부릅니다.
+이 인자를 통해 제조사 SVD 파일에 정의된 대로, 레지스터의 여러 하위 필드에 읽기/쓰기 접근이 가능합니다.
+이 역시 해당 칩의 해당 주변장치, 해당 레지스터에서 `w`가 제공하는 함수 목록은
+[tm4c123x 문서][tm4c123x documentation W]에서 확인할 수 있습니다.
+주의할 점은 우리가 설정하지 않은 모든 하위 필드도 기본값으로 덮어써진다는 것입니다.
+즉, 기존 레지스터 내용은 사라집니다.
 
 ```rust,ignore
 pwm.ctl.write(|w| w.globalsync0().clear_bit());
 ```
 
-### Modifying
+### 수정하기
 
-If we wish to change only one particular sub-field in this register and leave the other sub-fields unchanged, we can use the `modify` function. This function takes a closure with two arguments - one for reading and one for writing. Typically we call these `r` and `w` respectively. The `r` argument can be used to inspect the current contents of the register, and the `w` argument can be used to modify the register contents.
+레지스터의 특정 하위 필드 하나만 바꾸고 나머지 필드는 그대로 두고 싶다면 `modify` 함수를 사용합니다.
+이 함수는 두 개의 인자를 받는 closure를 사용하며, 보통 `r`과 `w`라고 부릅니다.
+`r`은 현재 레지스터 내용을 읽는 데, `w`는 그 내용을 수정하는 데 사용합니다.
 
 ```rust,ignore
 pwm.ctl.modify(|r, w| w.globalsync0().clear_bit());
 ```
 
-The `modify` function really shows the power of closures here. In C, we'd have to read into some temporary value, modify the correct bits and then write the value back. This means there's considerable scope for error:
+`modify` 함수는 여기서 closure의 장점을 잘 보여 줍니다. C에서는 보통 임시 변수에 읽어 온 뒤,
+적절한 비트를 수정하고 다시 써야 합니다. 이 과정에는 실수할 여지가 큽니다.
 
 ```C
 uint32_t temp = pwm0.ctl.read();
@@ -132,11 +177,20 @@ pwm0.enable.write(temp); // Uh oh! Wrong variable!
 [tm4c123x documentation R]: https://docs.rs/tm4c123x/0.7.0/tm4c123x/pwm0/ctl/struct.R.html
 [tm4c123x documentation W]: https://docs.rs/tm4c123x/0.7.0/tm4c123x/pwm0/ctl/struct.W.html
 
-## Using a HAL crate
+## HAL crate 사용하기
 
-The HAL crate for a chip typically works by implementing a custom Trait for the raw structures exposed by the PAC. Often this trait will define a function called `constrain()` for single peripherals or `split()` for things like GPIO ports with multiple pins. This function will consume the underlying raw peripheral structure and return a new object with a higher-level API. This API may also do things like have the Serial port `new` function require a borrow on some `Clock` structure, which can only be generated by calling the function which configures the PLLs and sets up all the clock frequencies. In this way, it is statically impossible to create a Serial port object without first having configured the clock rates, or for the Serial port object to misconvert the baud rate into clock ticks. Some crates even define special traits for the states each GPIO pin can be in, requiring the user to put a pin into the correct state (say, by selecting the appropriate Alternate Function Mode) before passing the pin into Peripheral. All with no run-time cost!
+칩용 HAL crate는 보통 PAC가 노출하는 raw 구조체에 대해 커스텀 Trait를 구현하는 방식으로 동작합니다.
+이 trait는 단일 주변장치에는 `constrain()`, 여러 핀을 가진 GPIO 포트 같은 대상에는 `split()` 함수를 제공하는 경우가 많습니다.
+이 함수는 하위 raw 주변장치 구조체를 소비하고, 더 고수준 API를 가진 새로운 객체를 반환합니다.
+이 API는 예를 들어 Serial 포트의 `new` 함수가 어떤 `Clock` 구조체를 빌리도록 강제할 수도 있습니다.
+그리고 그 `Clock` 구조체는 PLL을 설정하고 클럭 주파수를 구성하는 함수를 호출해야만 생성됩니다.
+이 방식 덕분에 클럭 설정 없이 Serial 포트 객체를 만들거나,
+baud rate를 클럭 tick으로 잘못 변환하는 일이 정적으로 불가능해집니다.
+일부 crate는 각 GPIO 핀이 가질 수 있는 상태에 대한 특수 trait를 정의해,
+사용자가 핀을 주변장치에 넘기기 전에 적절한 상태(예: 올바른 Alternate Function Mode)로 바꾸도록 강제하기도 합니다.
+이 모든 것이 런타임 비용 없이 이뤄집니다.
 
-Let's see an example:
+예제를 보겠습니다.
 
 ```rust,ignore
 #![no_std]
